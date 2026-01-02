@@ -18,6 +18,10 @@ deploymentTarget = "cloudrun"
 localPort = 3000
 externalPort = 80
 
+[[ports]]
+localPort = 5000
+externalPort = 80
+
 [env]
 # Disable browser auto-open (not available in Replit environment)
 BROWSER = "none"
@@ -27,3 +31,30 @@ DANGEROUSLY_DISABLE_HOST_CHECK = "true"
 CI = "false"
 # Set Node environment
 NODE_ENV = "development"
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Open 3D Studio"
+
+[[workflows.workflow]]
+name = "Open 3D Studio"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=5000 npm start"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
