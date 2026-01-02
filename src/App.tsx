@@ -227,23 +227,12 @@ const useApiInitialization = () => {
             }
           }
         } else {
-          addNotification({
-            type: 'warning',
-            title: 'API Connection Failed',
-            message: `Could not connect to ${settings.apiEndpoint}. Check if the server is running.`,
-            duration: 5000
-          });
+          console.warn(`API not connected: ${settings.apiEndpoint}`);
         }
 
         setApiInitialized(true);
       } catch (error) {
         console.error('Failed to initialize API:', error);
-        addNotification({
-          type: 'error',
-          title: 'API Initialization Failed',
-          message: 'Failed to initialize API client',
-          duration: 5000
-        });
         setApiInitialized(true);
       }
     };
