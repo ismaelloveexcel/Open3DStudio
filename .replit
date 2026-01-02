@@ -9,14 +9,12 @@ modules = ["nodejs-20"]
 channel = "stable-24_05"
 
 [deployment]
-# For production deployment, build and serve static files
 build = ["sh", "-c", "npm install && CI=false npm run build"]
-run = ["sh", "-c", "npx serve -s build -l 3000"]
-deploymentTarget = "cloudrun"
+run = ["sh", "-c", "npx serve -s build -l 5000"]
+deploymentTarget = "autoscale"
 
 [[ports]]
 localPort = 3000
-externalPort = 80
 
 [[ports]]
 localPort = 5000
