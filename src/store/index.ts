@@ -294,6 +294,7 @@ export const useStore = create<StoreState>()(
       // Reset feature when switching modules
       const defaultFeatures: Record<ModuleType, string> = {
         'game-studio': 'game-ideation',
+        'playable-generator': 'prompt-to-game',
         'mesh-generation': 'text-to-mesh',
         'mesh-painting': 'text-painting',
         'mesh-segmentation': 'segment-mesh',

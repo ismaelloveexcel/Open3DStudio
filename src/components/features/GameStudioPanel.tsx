@@ -562,7 +562,7 @@ const GameStudioPanel: React.FC = () => {
   
   // Project creation wizard for new users
   const [showWizard, setShowWizard] = useState(!currentProject);
-  if (showWizard) {
+  if (showWizard || !currentProject) {
     return (
       <Container>
         <ProjectWizard

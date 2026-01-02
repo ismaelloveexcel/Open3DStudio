@@ -27,6 +27,7 @@ export interface AuthState {
 // Module Types
 export type ModuleType = 
   | 'game-studio'
+  | 'playable-generator'
   | 'mesh-generation' 
   | 'mesh-painting' 
   | 'mesh-segmentation' 

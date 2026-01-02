@@ -9,10 +9,12 @@ const SidebarNavContainer = styled.nav`
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 24px;
-  gap: 8px;
+  padding: 12px 0;
+  gap: 2px;
   position: relative;
   z-index: 101;
+  overflow-y: auto;
+  overflow-x: hidden;
 `;
 
 const NavSection = styled.div`
@@ -21,19 +23,19 @@ const NavSection = styled.div`
 `;
 
 const NavButton = styled.button<{ active: boolean }>`
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 48px;
   background: ${props => props.active ? props.theme.colors.primary[100] : 'transparent'};
   border: none;
-  border-radius: 16px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: ${props => props.active ? props.theme.colors.primary[700] : props.theme.colors.text.secondary};
-  font-size: 24px;
+  font-size: 18px;
   cursor: pointer;
-  margin-bottom: 4px;
+  flex-shrink: 0;
   transition: background 0.2s;
   &:hover {
     background: ${props => props.theme.colors.primary[50]};
@@ -71,10 +73,10 @@ const SidebarNav: React.FC = () => {
           key={item.id}
           active={currentModule === item.id}
           title={item.label}
-          onClick={() => setCurrentModule(item.id)}
+          onClick={() => setCurrentModule(item.id as any)}
         >
           <i className={item.icon}></i>
-          <span style={{ fontSize: 10, marginTop: 4 }}>{item.label}</span>
+          <span style={{ fontSize: 8, marginTop: 2, textAlign: 'center', lineHeight: 1.1 }}>{item.label}</span>
         </NavButton>
       ))}
     </SidebarNavContainer>
