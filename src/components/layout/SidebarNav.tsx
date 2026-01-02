@@ -3,13 +3,14 @@ import styled from 'styled-components';
 import { useCurrentModule, useStoreActions } from '../../store';
 
 const SidebarNavContainer = styled.nav`
-  width: 80px;
+  width: 64px;
+  min-width: 64px;
   background: ${props => props.theme.colors.background.secondary};
   border-right: 1px solid ${props => props.theme.colors.border.default};
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
+  padding: 8px 0;
   gap: 2px;
   position: relative;
   z-index: 101;
@@ -23,20 +24,21 @@ const NavSection = styled.div`
 `;
 
 const NavButton = styled.button<{ active: boolean }>`
-  width: 56px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   background: ${props => props.active ? props.theme.colors.primary[100] : 'transparent'};
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: ${props => props.active ? props.theme.colors.primary[700] : props.theme.colors.text.secondary};
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.2s;
+  padding: 4px;
   &:hover {
     background: ${props => props.theme.colors.primary[50]};
     color: ${props => props.theme.colors.primary[700]};
@@ -76,7 +78,7 @@ const SidebarNav: React.FC = () => {
           onClick={() => setCurrentModule(item.id as any)}
         >
           <i className={item.icon}></i>
-          <span style={{ fontSize: 8, marginTop: 2, textAlign: 'center', lineHeight: 1.1 }}>{item.label}</span>
+          <span style={{ fontSize: 9, marginTop: 3, textAlign: 'center', lineHeight: 1.1, maxWidth: 48, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
         </NavButton>
       ))}
     </SidebarNavContainer>
