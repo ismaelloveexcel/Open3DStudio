@@ -84,6 +84,13 @@ const StageHeader = styled.div`
   background: ${props => props.theme.colors.background.primary};
   border-radius: ${props => props.theme.borderRadius.md};
   border: 1px solid ${props => props.theme.colors.border.default};
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const StageHeaderLeft = styled.div`
+  flex: 1;
 `;
 
 const StageTitle = styled.h3`
@@ -99,6 +106,24 @@ const StageDescription = styled.p`
   margin: 0;
   color: ${props => props.theme.colors.text.secondary};
   font-size: ${props => props.theme.typography.fontSize.sm};
+`;
+
+const ReviewButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid ${props => props.theme.colors.warning};
+  color: ${props => props.theme.colors.warning};
+  border-radius: ${props => props.theme.borderRadius.sm};
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.theme.colors.warning}20;
+  }
 `;
 
 const ContentArea = styled.div`
@@ -308,6 +333,7 @@ const GameStudioPanel: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
+  const [showReviewMenu, setShowReviewMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const currentProject = gameStudio.projects.find(p => p.id === gameStudio.currentProjectId);
@@ -323,6 +349,16 @@ const GameStudioPanel: React.FC = () => {
   const stage = currentProject.stage || 'idea';
   const stageInfo = getStageInfo(stage);
   const currentStageIndex = stageOrder.indexOf(stage);
+  
+  const goToStage = (targetStage: ProjectStage) => {
+    const targetIndex = stageOrder.indexOf(targetStage);
+    if (targetIndex < currentStageIndex) {
+      updateGameProject(currentProject.id, { stage: targetStage });
+      setShowReviewMenu(false);
+    }
+  };
+  
+  const canReview = currentStageIndex > 0;
   
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isProcessing) return;
@@ -942,11 +978,18 @@ const GameStudioPanel: React.FC = () => {
           const info = getStageInfo(s);
           const isActive = s === stage;
           const isCompleted = index < currentStageIndex;
+          const canClick = isCompleted;
           
           return (
             <React.Fragment key={s}>
               {index > 0 && <StageConnector />}
-              <StageItem active={isActive} completed={isCompleted}>
+              <StageItem 
+                active={isActive} 
+                completed={isCompleted} 
+                clickable={canClick}
+                onClick={() => canClick && goToStage(s)}
+                title={canClick ? `Click to review ${info.name}` : undefined}
+              >
                 <StageNumber completed={isCompleted}>
                   {isCompleted ? '✓' : info.number}
                 </StageNumber>
@@ -958,10 +1001,54 @@ const GameStudioPanel: React.FC = () => {
       </StageTimeline>
       
       <StageHeader>
-        <StageTitle>
-          Stage {stageInfo.number}: {stageInfo.name}
-        </StageTitle>
-        <StageDescription>{stageInfo.description}</StageDescription>
+        <StageHeaderLeft>
+          <StageTitle>
+            Stage {stageInfo.number}: {stageInfo.name}
+          </StageTitle>
+          <StageDescription>{stageInfo.description}</StageDescription>
+        </StageHeaderLeft>
+        {canReview && (
+          <div style={{ position: 'relative' }}>
+            <ReviewButton onClick={() => setShowReviewMenu(!showReviewMenu)}>
+              <span>&#8592;</span> Review Previous
+            </ReviewButton>
+            {showReviewMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 8,
+                background: '#1e1e2e',
+                border: '1px solid #3f3f5a',
+                borderRadius: 8,
+                padding: 8,
+                zIndex: 100,
+                minWidth: 180
+              }}>
+                {stageOrder.slice(0, currentStageIndex).map(s => {
+                  const info = getStageInfo(s);
+                  return (
+                    <div
+                      key={s}
+                      onClick={() => goToStage(s)}
+                      style={{
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        borderRadius: 4,
+                        fontSize: 13,
+                        color: '#e0e0e0'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#2a2a3e'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      Stage {info.number}: {info.name}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </StageHeader>
       
       <MainContent>
