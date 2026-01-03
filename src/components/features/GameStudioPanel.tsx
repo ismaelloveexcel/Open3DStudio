@@ -2,88 +2,113 @@ import React, { useState, useRef, useEffect } from 'react';
 import ProjectWizard from './ProjectWizard';
 import styled, { keyframes } from 'styled-components';
 import { useStore, useStoreActions } from '../../store';
-import { GameProject, ChatMessage, GameGenre, GameConfig } from '../../types/state';
-
-// Constants for AI response timing (milliseconds)
-const AI_RESPONSE_BASE_DELAY_MS = 1000;
-const AI_RESPONSE_RANDOM_DELAY_MS = 1000;
+import { GameProject, ChatMessage, GameGenre, ProjectStage } from '../../types/state';
+import { ConceptPreviewScene } from './ConceptPreviewScene';
+import { 
+  generateMarketReport, 
+  generateRevisionPlan, 
+  generateAssetPlan, 
+  generatePreviewSamples,
+  runQATests,
+  getStageInfo
+} from '../../services/gameStudioServices';
+import { GameCodeGenerator } from '../../utils/gameCodeGenerator';
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: ${props => props.theme.spacing.md};
-`;
-
-const ProjectHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: ${props => props.theme.spacing.md};
-  border-bottom: 1px solid ${props => props.theme.colors.border.default};
-  flex-wrap: wrap;
   gap: ${props => props.theme.spacing.sm};
-`;
-
-const ProjectSelector = styled.select`
-  background: ${props => props.theme.colors.background.primary};
-  border: 1px solid ${props => props.theme.colors.border.default};
-  color: ${props => props.theme.colors.text.primary};
-  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
-  border-radius: ${props => props.theme.borderRadius.sm};
-  font-size: ${props => props.theme.typography.fontSize.sm};
-  cursor: pointer;
-  max-width: 150px;
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary[500]};
-  }
-`;
-
-const ProjectTitle = styled.h4`
-  margin: 0;
-  color: ${props => props.theme.colors.text.primary};
-  font-size: ${props => props.theme.typography.fontSize.base};
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${props => props.theme.spacing.sm};
-`;
-
-const NewProjectButton = styled.button`
-  background: ${props => props.theme.colors.primary[500]};
-  color: white;
-  border: none;
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
-  border-radius: ${props => props.theme.borderRadius.md};
-  font-size: ${props => props.theme.typography.fontSize.sm};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: ${props => props.theme.spacing.xs};
-  
-  &:hover {
-    background: ${props => props.theme.colors.primary[600]};
-  }
-`;
-
-const ChatContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: ${props => props.theme.colors.background.primary};
-  border-radius: ${props => props.theme.borderRadius.lg};
-  border: 1px solid ${props => props.theme.colors.border.default};
   overflow: hidden;
 `;
 
-const ChatMessages = styled.div`
+const StageTimeline = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: ${props => props.theme.spacing.sm};
+  background: ${props => props.theme.colors.background.secondary};
+  border-radius: ${props => props.theme.borderRadius.md};
+  overflow-x: auto;
+  flex-shrink: 0;
+`;
+
+const StageItem = styled.div<{ active?: boolean; completed?: boolean; clickable?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: ${props => props.clickable ? 'pointer' : 'default'};
+  background: ${props => props.active ? props.theme.colors.primary[500] : props.completed ? props.theme.colors.success + '40' : 'transparent'};
+  color: ${props => props.active ? 'white' : props.completed ? props.theme.colors.success : props.theme.colors.text.muted};
+  border: 1px solid ${props => props.active ? props.theme.colors.primary[500] : props.completed ? props.theme.colors.success : 'transparent'};
+  
+  &:hover {
+    ${props => props.clickable && `background: ${props.theme.colors.primary[500]}30;`}
+  }
+`;
+
+const StageNumber = styled.span<{ completed?: boolean }>`
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  background: ${props => props.completed ? props.theme.colors.success : 'rgba(255,255,255,0.2)'};
+`;
+
+const StageConnector = styled.div`
+  width: 12px;
+  height: 2px;
+  background: ${props => props.theme.colors.border.default};
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: ${props => props.theme.spacing.sm};
+  overflow: hidden;
+`;
+
+const StageHeader = styled.div`
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background.primary};
+  border-radius: ${props => props.theme.borderRadius.md};
+  border: 1px solid ${props => props.theme.colors.border.default};
+`;
+
+const StageTitle = styled.h3`
+  margin: 0 0 4px 0;
+  color: ${props => props.theme.colors.text.primary};
+  font-size: ${props => props.theme.typography.fontSize.lg};
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+`;
+
+const StageDescription = styled.p`
+  margin: 0;
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+`;
+
+const ContentArea = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background.primary};
+  border-radius: ${props => props.theme.borderRadius.md};
+  border: 1px solid ${props => props.theme.colors.border.default};
+`;
+
+const ChatMessages = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${props => props.theme.spacing.sm};
@@ -105,224 +130,54 @@ const TypingIndicator = styled.div`
     background: ${props => props.theme.colors.primary[500]};
     border-radius: 50%;
     animation: ${pulse} 1.4s infinite;
-    
     &:nth-child(2) { animation-delay: 0.2s; }
     &:nth-child(3) { animation-delay: 0.4s; }
   }
 `;
 
-const MessageBubble = styled.div<{ role: 'user' | 'assistant' | 'system' }>`
-  max-width: 85%;
+const MessageBubble = styled.div<{ role: string }>`
+  max-width: 90%;
   padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
-  border-radius: ${props => props.theme.borderRadius.lg};
+  border-radius: ${props => props.theme.borderRadius.md};
   font-size: ${props => props.theme.typography.fontSize.sm};
   line-height: 1.5;
   align-self: ${props => props.role === 'user' ? 'flex-end' : 'flex-start'};
-  background: ${props => {
-    switch (props.role) {
-      case 'user': return props.theme.colors.primary[500];
-      case 'assistant': return props.theme.colors.background.secondary;
-      case 'system': return props.theme.colors.warning + '20';
-      default: return props.theme.colors.background.secondary;
-    }
-  }};
+  background: ${props => props.role === 'user' ? props.theme.colors.primary[500] : props.theme.colors.background.secondary};
   color: ${props => props.role === 'user' ? 'white' : props.theme.colors.text.primary};
-  border: ${props => props.role === 'system' ? `1px solid ${props.theme.colors.warning}` : 'none'};
   
-  p {
-    margin: 0 0 ${props => props.theme.spacing.xs} 0;
-    &:last-child { margin-bottom: 0; }
-  }
-  
-  ul, ol {
-    margin: ${props => props.theme.spacing.xs} 0;
-    padding-left: ${props => props.theme.spacing.lg};
-  }
-  
-  code {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.9em;
-  }
+  p { margin: 0 0 4px 0; &:last-child { margin: 0; } }
 `;
 
-const ChatInputContainer = styled.div`
-  padding: ${props => props.theme.spacing.md};
-  border-top: 1px solid ${props => props.theme.colors.border.default};
+const InputArea = styled.div`
   display: flex;
   gap: ${props => props.theme.spacing.sm};
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background.secondary};
+  border-radius: ${props => props.theme.borderRadius.md};
+  flex-shrink: 0;
 `;
 
-const ChatInput = styled.textarea`
+const TextInput = styled.textarea`
   flex: 1;
-  background: ${props => props.theme.colors.background.secondary};
+  background: ${props => props.theme.colors.background.primary};
   border: 1px solid ${props => props.theme.colors.border.default};
   border-radius: ${props => props.theme.borderRadius.md};
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   color: ${props => props.theme.colors.text.primary};
   font-size: ${props => props.theme.typography.fontSize.sm};
   resize: none;
-  min-height: 44px;
-  max-height: 120px;
+  min-height: 60px;
   font-family: inherit;
   
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary[500]};
-  }
-  
-  &::placeholder {
-    color: ${props => props.theme.colors.text.muted};
-  }
+  &:focus { outline: none; border-color: ${props => props.theme.colors.primary[500]}; }
+  &::placeholder { color: ${props => props.theme.colors.text.muted}; }
 `;
 
-const SendButton = styled.button<{ disabled?: boolean }>`
-  background: ${props => props.disabled ? props.theme.colors.gray[600] : props.theme.colors.primary[500]};
-  color: white;
-  border: none;
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
-  border-radius: ${props => props.theme.borderRadius.md};
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  
-  &:hover:not(:disabled) {
-    background: ${props => props.theme.colors.primary[600]};
-  }
-`;
-
-const QuickActions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: ${props => props.theme.spacing.xs};
-  padding: ${props => props.theme.spacing.sm};
-  border-top: 1px solid ${props => props.theme.colors.border.default};
-`;
-
-const QuickActionButton = styled.button`
-  background: ${props => props.theme.colors.background.tertiary};
-  border: 1px solid ${props => props.theme.colors.border.default};
-  color: ${props => props.theme.colors.text.secondary};
-  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
-  border-radius: ${props => props.theme.borderRadius.sm};
-  font-size: ${props => props.theme.typography.fontSize.xs};
-  cursor: pointer;
-  
-  &:hover {
-    background: ${props => props.theme.colors.primary[500]}20;
-    border-color: ${props => props.theme.colors.primary[500]};
-    color: ${props => props.theme.colors.primary[400]};
-  }
-`;
-
-const StatusBar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
-  background: ${props => props.theme.colors.background.tertiary};
-  border-radius: ${props => props.theme.borderRadius.md};
-  font-size: ${props => props.theme.typography.fontSize.xs};
-  color: ${props => props.theme.colors.text.secondary};
-`;
-
-const ProgressIndicator = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${props => props.theme.spacing.sm};
-  padding: ${props => props.theme.spacing.md};
-  background: ${props => props.theme.colors.background.secondary};
-  border-radius: ${props => props.theme.borderRadius.md};
-  margin-bottom: ${props => props.theme.spacing.sm};
-`;
-
-const ProgressStep = styled.div<{ active?: boolean; completed?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: ${props => props.theme.spacing.xs};
-  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
-  border-radius: ${props => props.theme.borderRadius.sm};
-  font-size: ${props => props.theme.typography.fontSize.xs};
-  background: ${props => props.completed ? props.theme.colors.success + '30' : props.active ? props.theme.colors.primary[500] + '30' : 'transparent'};
-  color: ${props => props.completed ? props.theme.colors.success : props.active ? props.theme.colors.primary[400] : props.theme.colors.text.muted};
-  border: 1px solid ${props => props.completed ? props.theme.colors.success : props.active ? props.theme.colors.primary[500] : props.theme.colors.border.default};
-`;
-
-const ProgressArrow = styled.span`
-  color: ${props => props.theme.colors.text.muted};
-  font-size: 12px;
-`;
-
-const ExamplePrompts = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${props => props.theme.spacing.sm};
-  padding: ${props => props.theme.spacing.md};
-  background: ${props => props.theme.colors.background.secondary};
-  border-radius: ${props => props.theme.borderRadius.md};
-  margin: ${props => props.theme.spacing.sm} 0;
-`;
-
-const ExamplePromptTitle = styled.div`
-  font-size: ${props => props.theme.typography.fontSize.sm};
-  color: ${props => props.theme.colors.text.secondary};
-  margin-bottom: ${props => props.theme.spacing.xs};
-`;
-
-const ExamplePromptButton = styled.button`
-  background: ${props => props.theme.colors.background.primary};
-  border: 1px solid ${props => props.theme.colors.border.default};
-  color: ${props => props.theme.colors.text.primary};
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
-  border-radius: ${props => props.theme.borderRadius.md};
-  font-size: ${props => props.theme.typography.fontSize.sm};
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: ${props => props.theme.colors.primary[500]}20;
-    border-color: ${props => props.theme.colors.primary[500]};
-  }
-`;
-
-const StatusBadge = styled.span<{ status: string }>`
+const Button = styled.button<{ variant?: 'primary' | 'success' | 'secondary' }>`
   background: ${props => {
-    switch (props.status) {
-      case 'ideation': return props.theme.colors.primary[500];
-      case 'designing': return props.theme.colors.warning;
-      case 'building': return '#f59e0b';
-      case 'testing': return props.theme.colors.info || '#3b82f6';
-      case 'deployed': return props.theme.colors.success;
-      default: return props.theme.colors.gray[500];
-    }
-  }};
-  color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-weight: 500;
-  text-transform: capitalize;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: ${props => props.theme.spacing.sm};
-  margin-top: ${props => props.theme.spacing.md};
-`;
-
-const ActionButton = styled.button<{ variant?: 'primary' | 'success' | 'secondary' }>`
-  flex: 1;
-  background: ${props => {
-    switch (props.variant) {
-      case 'primary': return props.theme.colors.primary[500];
-      case 'success': return props.theme.colors.success;
-      default: return props.theme.colors.background.tertiary;
-    }
+    if (props.variant === 'primary') return props.theme.colors.primary[500];
+    if (props.variant === 'success') return props.theme.colors.success;
+    return props.theme.colors.background.tertiary;
   }};
   color: ${props => props.variant ? 'white' : props.theme.colors.text.primary};
   border: 1px solid ${props => props.variant ? 'transparent' : props.theme.colors.border.default};
@@ -332,486 +187,623 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'success' | 'secondar
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: ${props => props.theme.spacing.xs};
   
-  &:hover {
-    opacity: 0.9;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
-const WelcomeContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: ${props => props.theme.spacing.xl};
-  text-align: center;
-  gap: ${props => props.theme.spacing.lg};
-`;
-
-const WelcomeIcon = styled.div`
-  font-size: 48px;
-  color: ${props => props.theme.colors.primary[500]};
-`;
-
-const WelcomeTitle = styled.h3`
-  margin: 0;
-  color: ${props => props.theme.colors.text.primary};
-  font-size: ${props => props.theme.typography.fontSize.xl};
-`;
-
-const WelcomeText = styled.p`
-  margin: 0;
-  color: ${props => props.theme.colors.text.secondary};
-  font-size: ${props => props.theme.typography.fontSize.sm};
-  max-width: 300px;
-  line-height: 1.6;
-`;
-
-const GenreGrid = styled.div`
+const CardGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: ${props => props.theme.spacing.sm};
-  width: 100%;
-  max-width: 300px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: ${props => props.theme.spacing.md};
 `;
 
-const GenreButton = styled.button`
+const Card = styled.div<{ approved?: boolean }>`
   background: ${props => props.theme.colors.background.secondary};
+  border: 2px solid ${props => props.approved ? props.theme.colors.success : props.theme.colors.border.default};
+  border-radius: ${props => props.theme.borderRadius.md};
+  padding: ${props => props.theme.spacing.md};
+  
+  h4 { margin: 0 0 8px 0; color: ${props => props.theme.colors.text.primary}; font-size: 14px; }
+  p { margin: 0; color: ${props => props.theme.colors.text.secondary}; font-size: 12px; }
+`;
+
+const ProgressBar = styled.div<{ value: number }>`
+  width: 100%;
+  height: 8px;
+  background: ${props => props.theme.colors.background.tertiary};
+  border-radius: 4px;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    display: block;
+    width: ${props => props.value}%;
+    height: 100%;
+    background: ${props => props.value >= 80 ? props.theme.colors.success : props.value >= 60 ? props.theme.colors.warning : props.theme.colors.error};
+    transition: width 0.3s ease;
+  }
+`;
+
+const ScoreDisplay = styled.div<{ score: number }>`
+  font-size: 32px;
+  font-weight: bold;
+  color: ${props => props.score >= 80 ? props.theme.colors.success : props.score >= 60 ? props.theme.colors.warning : props.theme.colors.error};
+  text-align: center;
+  margin: ${props => props.theme.spacing.md} 0;
+`;
+
+const PreviewGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: ${props => props.theme.spacing.md};
+`;
+
+const PreviewCard = styled.div<{ approved?: boolean }>`
+  background: ${props => props.theme.colors.background.secondary};
+  border: 2px solid ${props => props.approved ? props.theme.colors.success : props.theme.colors.border.default};
+  border-radius: ${props => props.theme.borderRadius.md};
+  overflow: hidden;
+  
+  h4 { 
+    margin: 0; 
+    padding: ${props => props.theme.spacing.sm}; 
+    background: ${props => props.approved ? props.theme.colors.success + '20' : 'transparent'};
+    color: ${props => props.theme.colors.text.primary}; 
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+`;
+
+const SelectControl = styled.select`
+  background: ${props => props.theme.colors.background.primary};
   border: 1px solid ${props => props.theme.colors.border.default};
   color: ${props => props.theme.colors.text.primary};
-  padding: ${props => props.theme.spacing.md};
-  border-radius: ${props => props.theme.borderRadius.md};
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: ${props => props.theme.spacing.xs};
-  transition: all 0.2s;
-  
-  &:hover {
-    background: ${props => props.theme.colors.primary[500]}20;
-    border-color: ${props => props.theme.colors.primary[500]};
-  }
-  
-  i {
-    font-size: 20px;
-    color: ${props => props.theme.colors.primary[500]};
-  }
-  
-  span {
-    font-size: ${props => props.theme.typography.fontSize.xs};
-  }
+  padding: ${props => props.theme.spacing.sm};
+  border-radius: ${props => props.theme.borderRadius.sm};
+  font-size: ${props => props.theme.typography.fontSize.sm};
 `;
 
-// AI response simulation (in production, this would call a real AI service)
-const generateAIResponse = (message: string, project: GameProject | null): string => {
-  const lowerMessage = message.toLowerCase();
-  
-  if (!project) {
-    return "Let's create a new game! What type of game would you like to make? You can choose from platformer, puzzle, shooter, racing, RPG, adventure, or arcade games.";
-  }
-  
-  if (lowerMessage.includes('build') || lowerMessage.includes('generate') || lowerMessage.includes('create game')) {
-    return `Great! I'll help you build your ${project.genre} game "${project.name}". Based on our discussion, here's what I'll generate:
+const HeaderRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+  flex-wrap: wrap;
+`;
 
-**Game Features:**
-- Genre: ${project.genre}
-- Controls: Keyboard + Touch support
-- ${project.gameConfig.physics ? 'Physics-based gameplay' : 'Simple collision detection'}
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
 
-**Next Steps:**
-1. Click "Build Game" to generate the game code
-2. Preview the game in the viewport
-3. Export or deploy when ready
+const LoadingSpinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 3px solid ${props => props.theme.colors.border.default};
+  border-top-color: ${props => props.theme.colors.primary[500]};
+  border-radius: 50%;
+  animation: ${spin} 1s linear infinite;
+  margin: ${props => props.theme.spacing.xl} auto;
+`;
 
-Would you like me to proceed with building the game?`;
-  }
-  
-  if (lowerMessage.includes('3d') || lowerMessage.includes('model') || lowerMessage.includes('asset')) {
-    return `I can help generate 3D assets for your game! Here are some options:
+const LoadingText = styled.p`
+  text-align: center;
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  margin-top: ${props => props.theme.spacing.md};
+`;
 
-**Recommended 3D Assets:**
-- Player character model
-- Environment objects (platforms, obstacles)
-- Collectible items
-- Enemy characters
-
-To generate 3D assets:
-1. Describe what you need (e.g., "a cute robot character")
-2. I'll create the asset using the MeshGen module
-3. Assets will automatically be added to your game
-
-What 3D asset would you like to create first?`;
-  }
-  
-  if (lowerMessage.includes('deploy') || lowerMessage.includes('publish') || lowerMessage.includes('share')) {
-    return `To deploy your game, you have several options:
-
-**Deployment Options:**
-1. **Download HTML5** - Single file, works anywhere
-2. **Deploy to Replit** - Instant hosting with shareable URL
-3. **Export for Game Engines** - Use in Unity/Unreal
-
-Click "Export Game" when you're ready to deploy!`;
-  }
-  
-  if (lowerMessage.includes('help') || lowerMessage.includes('what can')) {
-    return `I'm your AI game development assistant! Here's what I can help with:
-
-**Game Design:**
-- Brainstorm game mechanics
-- Design levels and puzzles
-- Balance difficulty
-
-**Asset Creation:**
-- Generate 3D models automatically
-- Create textures and sprites
-- Design UI elements
-
-**Development:**
-- Generate playable game code
-- Preview and test games
-- Export for deployment
-
-What would you like to work on?`;
-  }
-  
-  // Default contextual response
-  return `That's a great idea for your ${project.genre} game! I've noted that down. 
-
-Here are some suggestions to enhance your concept:
-- Add power-ups for variety
-- Include a scoring system
-- Create multiple difficulty levels
-
-Would you like me to help design the game mechanics, generate 3D assets, or build a prototype?`;
-};
+const stageOrder: ProjectStage[] = ['idea', 'market', 'revision', 'asset_plan', 'preview', 'build', 'qa'];
 
 const GameStudioPanel: React.FC = () => {
   const { gameStudio } = useStore();
-  const { 
-    createGameProject, 
-    updateGameProject, 
-    addChatMessage,
-    setGameStudioGenerating,
-    setCurrentGameProject,
-    deleteGameProject,
-    buildGame,
-    addNotification
-  } = useStoreActions();
+  const { updateGameProject, addChatMessage, setCurrentGameProject, deleteGameProject, addNotification } = useStoreActions();
   
   const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   
   const currentProject = gameStudio.projects.find(p => p.id === gameStudio.currentProjectId);
   
-  // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentProject?.conversation]);
   
-  const examplePrompts: Record<GameGenre, string[]> = {
-    platformer: [
-      "Make a platformer where I collect coins and avoid spikes",
-      "Create a jungle adventure with jumping puzzles",
-      "Build a side-scroller with power-ups and enemies"
-    ],
-    puzzle: [
-      "Create a sliding puzzle game with colorful tiles",
-      "Make a match-3 puzzle with gems",
-      "Build a brain teaser with increasing difficulty"
-    ],
-    shooter: [
-      "Make a space shooter with alien enemies",
-      "Create a top-down shooter with waves of enemies",
-      "Build an arcade shooter with power-ups"
-    ],
-    racing: [
-      "Make a simple car racing game",
-      "Create a space racing game with obstacles",
-      "Build an endless runner with speed boosts"
-    ],
-    arcade: [
-      "Create a classic snake game",
-      "Make a pac-man style game",
-      "Build an endless runner with high scores"
-    ],
-    adventure: [
-      "Make an exploration game with treasure hunting",
-      "Create a maze adventure with keys and doors",
-      "Build a quest game with collectibles"
-    ],
-    rpg: ["Create an RPG with turn-based combat"],
-    simulation: ["Make a simple farming simulation"],
-    educational: ["Create a math quiz game"],
-    other: ["Make a fun game with your own idea"]
-  };
-
-  const getProgressStep = () => {
-    if (!currentProject) return 0;
-    if (currentProject.generatedCode) return 3;
-    if (currentProject.conversation.length > 1) return 2;
-    return 1;
-  };
-
-  const handleNewProject = (genre: GameGenre) => {
-    const genreNames: Record<GameGenre, string> = {
-      platformer: 'Platformer Adventure',
-      puzzle: 'Puzzle Challenge',
-      shooter: 'Space Shooter',
-      racing: 'Speed Racer',
-      rpg: 'Fantasy Quest',
-      adventure: 'Epic Journey',
-      simulation: 'Life Simulator',
-      arcade: 'Arcade Classic',
-      educational: 'Learning Game',
-      other: 'My Game'
-    };
-    
-    createGameProject(genre, genreNames[genre]);
-  };
-
-  const handleExamplePrompt = (prompt: string) => {
-    setInputValue(prompt);
-    inputRef.current?.focus();
-  };
-  
-  const handleProjectChange = (projectId: string) => {
-    if (projectId === 'new') {
-      // Show genre selection (handled by welcome screen)
-      setCurrentGameProject(null);
-    } else {
-      setCurrentGameProject(projectId);
-    }
-  };
-  
-  const handleDeleteProject = () => {
-    if (!currentProject) return;
-    if (window.confirm(`Delete "${currentProject.name}"? This cannot be undone.`)) {
-      deleteGameProject(currentProject.id);
-    }
-  };
-  
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || !currentProject) return;
-    
-    const userMessage = inputValue.trim();
-    setInputValue('');
-    
-    // Add user message
-    addChatMessage(currentProject.id, {
-      id: `msg_${Date.now()}`,
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date()
-    });
-    
-    // Simulate AI typing
-    setIsTyping(true);
-    
-    // Generate AI response (simulated delay)
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(userMessage, currentProject);
-      
-      addChatMessage(currentProject.id, {
-        id: `msg_${Date.now()}`,
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date()
-      });
-      
-      setIsTyping(false);
-    }, AI_RESPONSE_BASE_DELAY_MS + Math.random() * AI_RESPONSE_RANDOM_DELAY_MS);
-  };
-  
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-  
-  const handleQuickAction = (action: string) => {
-    setInputValue(action);
-    inputRef.current?.focus();
-  };
-  
-  const handleBuildGame = async () => {
-    if (!currentProject) return;
-    
-    try {
-      setGameStudioGenerating(true);
-      await buildGame(currentProject.id);
-      
-      addNotification({
-        type: 'success',
-        title: 'Game Built!',
-        message: 'Your game is ready to preview and export',
-        duration: 5000
-      });
-    } catch (error) {
-      addNotification({
-        type: 'error',
-        title: 'Build Failed',
-        message: error instanceof Error ? error.message : 'Failed to build game',
-        duration: 5000
-      });
-    } finally {
-      setGameStudioGenerating(false);
-    }
-  };
-  
-  // Project creation wizard for new users
-  const [showWizard, setShowWizard] = useState(!currentProject);
-  if (showWizard || !currentProject) {
-    return (
-      <Container>
-        <ProjectWizard
-          onComplete={({ type, template, name }) => {
-            // Map wizard selections to genre and type
-            let genre = template;
-            if (!['platformer', 'shooter', 'puzzle', 'rpg'].includes(genre)) genre = 'other';
-            createGameProject(genre, name, type); // type: '2d' or '3d'
-            setShowWizard(false);
-          }}
-        />
-      </Container>
-    );
+  if (!currentProject) {
+    return <ProjectWizard onComplete={() => {}} />;
   }
   
-  const progressStep = getProgressStep();
-  const hasOnlyWelcome = currentProject.conversation.length <= 1 && 
-    (currentProject.conversation.length === 0 || currentProject.conversation[0]?.role === 'assistant');
-  const prompts = examplePrompts[currentProject.genre] || examplePrompts.other;
-
+  const stage = currentProject.stage || 'idea';
+  const stageInfo = getStageInfo(stage);
+  const currentStageIndex = stageOrder.indexOf(stage);
+  
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isProcessing) return;
+    
+    const userMessage: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      role: 'user',
+      content: inputValue.trim(),
+      timestamp: new Date()
+    };
+    
+    addChatMessage(currentProject.id, userMessage);
+    setInputValue('');
+    
+    if (stage === 'idea') {
+      updateGameProject(currentProject.id, { ideaSummary: inputValue.trim() });
+      
+      setTimeout(() => {
+        const aiResponse: ChatMessage = {
+          id: `msg_${Date.now()}`,
+          role: 'assistant',
+          content: `I understand your vision:\n\n"${inputValue.trim()}"\n\nThis sounds like a unique experience! When you're ready, click "Proceed to Market Analysis" to see how this compares to current trends.`,
+          timestamp: new Date()
+        };
+        addChatMessage(currentProject.id, aiResponse);
+      }, 800);
+    }
+  };
+  
+  const proceedToNextStage = async () => {
+    const nextIndex = currentStageIndex + 1;
+    if (nextIndex >= stageOrder.length) return;
+    
+    const nextStage = stageOrder[nextIndex];
+    setIsProcessing(true);
+    
+    try {
+      switch (nextStage) {
+        case 'market':
+          setProcessingMessage('Analyzing market trends...');
+          const marketReport = await generateMarketReport(currentProject);
+          updateGameProject(currentProject.id, { stage: 'market', marketReport });
+          break;
+          
+        case 'revision':
+          setProcessingMessage('Generating improvement suggestions...');
+          if (!currentProject.marketReport) {
+            throw new Error('Market report not available');
+          }
+          const revisionPlan = await generateRevisionPlan(currentProject, currentProject.marketReport);
+          updateGameProject(currentProject.id, { stage: 'revision', revisionPlan });
+          break;
+          
+        case 'asset_plan':
+          setProcessingMessage('Planning game assets...');
+          const assetPlan = await generateAssetPlan(currentProject);
+          updateGameProject(currentProject.id, { stage: 'asset_plan', assetPlan });
+          break;
+          
+        case 'preview':
+          setProcessingMessage('Generating visual previews...');
+          if (!currentProject.assetPlan) {
+            throw new Error('Asset plan not available');
+          }
+          const previewSamples = await generatePreviewSamples(currentProject, currentProject.assetPlan);
+          updateGameProject(currentProject.id, { stage: 'preview', previewSamples });
+          break;
+          
+        case 'build':
+          setProcessingMessage('Building your game...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const gameCode = GameCodeGenerator.generateHTML5Game(currentProject);
+          updateGameProject(currentProject.id, { stage: 'build', generatedCode: gameCode });
+          break;
+          
+        case 'qa':
+          setProcessingMessage('Running quality tests...');
+          const qaReport = await runQATests(currentProject);
+          updateGameProject(currentProject.id, { stage: 'qa', qaReport });
+          break;
+      }
+    } catch (error) {
+      addNotification({ type: 'error', title: 'Error', message: 'Failed to process stage', duration: 3000 });
+    }
+    
+    setIsProcessing(false);
+    setProcessingMessage('');
+  };
+  
+  const approvePreview = (previewId: string) => {
+    if (!currentProject.previewSamples) return;
+    const updated = currentProject.previewSamples.map(p => 
+      p.id === previewId ? { ...p, approved: true } : p
+    );
+    updateGameProject(currentProject.id, { previewSamples: updated });
+  };
+  
+  const approveAllPreviews = () => {
+    if (!currentProject.previewSamples) return;
+    const updated = currentProject.previewSamples.map(p => ({ ...p, approved: true }));
+    updateGameProject(currentProject.id, { previewSamples: updated });
+  };
+  
+  const allPreviewsApproved = currentProject.previewSamples?.every(p => p.approved) || false;
+  
+  const renderStageContent = () => {
+    if (isProcessing) {
+      return (
+        <ContentArea>
+          <LoadingSpinner />
+          <LoadingText>{processingMessage}</LoadingText>
+        </ContentArea>
+      );
+    }
+    
+    switch (stage) {
+      case 'idea':
+        return (
+          <>
+            <ContentArea>
+              <ChatMessages>
+                {currentProject.conversation.map(msg => (
+                  <MessageBubble key={msg.id} role={msg.role}>
+                    {msg.content.split('\n').map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))}
+                  </MessageBubble>
+                ))}
+                <div ref={messagesEndRef} />
+              </ChatMessages>
+            </ContentArea>
+            <InputArea>
+              <TextInput
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Describe your game idea in 4-5 lines... What's the setting? What does the player do? What's the mood?"
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Button variant="primary" onClick={handleSendMessage} disabled={!inputValue.trim()}>
+                  Send
+                </Button>
+                {currentProject.ideaSummary && (
+                  <Button variant="success" onClick={proceedToNextStage}>
+                    Proceed
+                  </Button>
+                )}
+              </div>
+            </InputArea>
+          </>
+        );
+        
+      case 'market':
+        const market = currentProject.marketReport;
+        return (
+          <ContentArea>
+            <h4 style={{ marginTop: 0 }}>Market Viability Score</h4>
+            <ScoreDisplay score={market?.viabilityScore || 0}>{market?.viabilityScore || 0}%</ScoreDisplay>
+            <ProgressBar value={market?.viabilityScore || 0} />
+            
+            <h4 style={{ marginTop: 24 }}>Similar Games in Market</h4>
+            <CardGrid>
+              {market?.similarGames.map((game, i) => (
+                <Card key={i}>
+                  <h4>{game.name}</h4>
+                  <p>Success Score: {game.successScore}%</p>
+                  <p style={{ marginTop: 8 }}>{game.features.join(', ')}</p>
+                </Card>
+              ))}
+            </CardGrid>
+            
+            <h4 style={{ marginTop: 24 }}>Current Trends</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {market?.trends.map((trend, i) => (
+                <span key={i} style={{ padding: '4px 12px', background: 'rgba(99, 102, 241, 0.2)', borderRadius: 16, fontSize: 12 }}>
+                  {trend}
+                </span>
+              ))}
+            </div>
+            
+            <h4 style={{ marginTop: 24 }}>Opportunities</h4>
+            <ul>
+              {market?.opportunities.map((opp, i) => (
+                <li key={i} style={{ color: '#10b981', marginBottom: 4 }}>{opp}</li>
+              ))}
+            </ul>
+            
+            <div style={{ marginTop: 24 }}>
+              <Button variant="success" onClick={proceedToNextStage}>
+                Continue to Revision Stage
+              </Button>
+            </div>
+          </ContentArea>
+        );
+        
+      case 'revision':
+        const revision = currentProject.revisionPlan;
+        return (
+          <ContentArea>
+            <h4 style={{ marginTop: 0 }}>Suggested Improvements</h4>
+            <p style={{ color: '#9ca3af', marginBottom: 16 }}>Based on market analysis, here are recommendations to make your game more successful:</p>
+            
+            <CardGrid>
+              {revision?.suggestedChanges.map((change, i) => (
+                <Card key={i}>
+                  <h4>{change.area}</h4>
+                  <p>{change.suggestion}</p>
+                  <span style={{ 
+                    display: 'inline-block',
+                    marginTop: 8,
+                    padding: '2px 8px', 
+                    borderRadius: 4, 
+                    fontSize: 10,
+                    background: change.impact === 'high' ? '#ef4444' : change.impact === 'medium' ? '#f59e0b' : '#6b7280'
+                  }}>
+                    {change.impact.toUpperCase()} IMPACT
+                  </span>
+                </Card>
+              ))}
+            </CardGrid>
+            
+            <div style={{ marginTop: 24 }}>
+              <Button variant="success" onClick={proceedToNextStage}>
+                Approve & Continue to Asset Planning
+              </Button>
+            </div>
+          </ContentArea>
+        );
+        
+      case 'asset_plan':
+        const assets = currentProject.assetPlan;
+        return (
+          <ContentArea>
+            <HeaderRow>
+              <h4 style={{ margin: 0 }}>Asset Generation Plan</h4>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <SelectControl 
+                  value={assets?.realism || 'semi_realistic'}
+                  onChange={(e) => updateGameProject(currentProject.id, { 
+                    assetPlan: { ...assets!, realism: e.target.value as any }
+                  })}
+                >
+                  <option value="stylized">Stylized</option>
+                  <option value="semi_realistic">Semi-Realistic</option>
+                  <option value="realistic">Realistic</option>
+                </SelectControl>
+                <SelectControl 
+                  value={assets?.detailLevel || 'medium'}
+                  onChange={(e) => updateGameProject(currentProject.id, { 
+                    assetPlan: { ...assets!, detailLevel: e.target.value as any }
+                  })}
+                >
+                  <option value="low">Low Detail</option>
+                  <option value="medium">Medium Detail</option>
+                  <option value="high">High Detail</option>
+                </SelectControl>
+              </div>
+            </HeaderRow>
+            
+            <p style={{ color: '#9ca3af', margin: '16px 0' }}>
+              These assets will be generated for your game. Adjust realism and detail level above.
+            </p>
+            
+            <CardGrid>
+              {assets?.assets.map((asset) => (
+                <Card key={asset.id}>
+                  <h4>{asset.name}</h4>
+                  <p>{asset.description}</p>
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                    <span style={{ 
+                      padding: '2px 8px', 
+                      borderRadius: 4, 
+                      fontSize: 10,
+                      background: 'rgba(99, 102, 241, 0.2)'
+                    }}>
+                      {asset.category}
+                    </span>
+                    <span style={{ 
+                      padding: '2px 8px', 
+                      borderRadius: 4, 
+                      fontSize: 10,
+                      background: asset.priority === 'essential' ? '#ef444440' : asset.priority === 'important' ? '#f59e0b40' : '#6b728040'
+                    }}>
+                      {asset.priority}
+                    </span>
+                  </div>
+                </Card>
+              ))}
+            </CardGrid>
+            
+            <div style={{ marginTop: 24 }}>
+              <Button variant="success" onClick={proceedToNextStage}>
+                Approve Assets & Generate Previews
+              </Button>
+            </div>
+          </ContentArea>
+        );
+        
+      case 'preview':
+        return (
+          <ContentArea>
+            <HeaderRow>
+              <h4 style={{ margin: 0 }}>Visual Previews</h4>
+              <Button variant="primary" onClick={approveAllPreviews}>
+                Approve All
+              </Button>
+            </HeaderRow>
+            <p style={{ color: '#9ca3af', margin: '16px 0' }}>
+              Here's how your game will look. Approve each preview or all at once.
+            </p>
+            
+            <PreviewGrid>
+              {currentProject.previewSamples?.map((preview) => (
+                <PreviewCard key={preview.id} approved={preview.approved}>
+                  <ConceptPreviewScene 
+                    preview={{ 
+                      id: preview.id, 
+                      type: preview.type as any, 
+                      name: preview.name, 
+                      description: '', 
+                      approved: preview.approved,
+                      sceneConfig: preview.sceneConfig 
+                    }} 
+                    size={{ width: 280, height: 180 }}
+                  />
+                  <h4>
+                    {preview.name}
+                    {!preview.approved && (
+                      <Button onClick={() => approvePreview(preview.id)} style={{ padding: '4px 8px', fontSize: 10 }}>
+                        Approve
+                      </Button>
+                    )}
+                    {preview.approved && <span style={{ color: '#10b981', fontSize: 12 }}>Approved</span>}
+                  </h4>
+                </PreviewCard>
+              ))}
+            </PreviewGrid>
+            
+            <div style={{ marginTop: 24 }}>
+              <Button 
+                variant="success" 
+                onClick={proceedToNextStage}
+                disabled={!allPreviewsApproved}
+              >
+                {allPreviewsApproved ? 'Build Game' : 'Approve all previews to continue'}
+              </Button>
+            </div>
+          </ContentArea>
+        );
+        
+      case 'build':
+        return (
+          <ContentArea>
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <h2 style={{ color: '#10b981', marginBottom: 16 }}>Game Built Successfully!</h2>
+              <p style={{ color: '#9ca3af', marginBottom: 24 }}>
+                Your game has been generated. Click below to run quality assurance tests.
+              </p>
+              <Button variant="success" onClick={proceedToNextStage}>
+                Run QA Tests
+              </Button>
+            </div>
+          </ContentArea>
+        );
+        
+      case 'qa':
+        const qa = currentProject.qaReport;
+        return (
+          <ContentArea>
+            <h4 style={{ marginTop: 0 }}>Quality Assurance Report</h4>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+              <Card>
+                <h4>Performance</h4>
+                <ScoreDisplay score={qa?.performanceScore || 0} style={{ fontSize: 24, margin: '8px 0' }}>
+                  {qa?.performanceScore || 0}%
+                </ScoreDisplay>
+              </Card>
+              <Card>
+                <h4>Playability</h4>
+                <ScoreDisplay score={qa?.playabilityScore || 0} style={{ fontSize: 24, margin: '8px 0' }}>
+                  {qa?.playabilityScore || 0}%
+                </ScoreDisplay>
+              </Card>
+              <Card>
+                <h4>Overall</h4>
+                <ScoreDisplay score={qa?.overallScore || 0} style={{ fontSize: 24, margin: '8px 0' }}>
+                  {qa?.overallScore || 0}%
+                </ScoreDisplay>
+              </Card>
+            </div>
+            
+            <h4>Tests Run: {qa?.testsRun || 0}</h4>
+            
+            {qa?.issuesFound && qa.issuesFound.length > 0 ? (
+              <>
+                <h4>Issues Found & Fixed</h4>
+                {qa.issuesFound.map((issue) => (
+                  <Card key={issue.id} style={{ marginBottom: 8 }} approved={issue.fixed}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{issue.description}</span>
+                      <span style={{ 
+                        padding: '2px 8px', 
+                        borderRadius: 4, 
+                        fontSize: 10,
+                        background: issue.fixed ? '#10b98140' : '#ef444440'
+                      }}>
+                        {issue.fixed ? 'FIXED' : issue.severity.toUpperCase()}
+                      </span>
+                    </div>
+                  </Card>
+                ))}
+              </>
+            ) : (
+              <p style={{ color: '#10b981' }}>No issues found! Game passed all tests.</p>
+            )}
+            
+            <h4 style={{ marginTop: 24 }}>Recommendations</h4>
+            <ul>
+              {qa?.recommendations.map((rec, i) => (
+                <li key={i} style={{ color: '#9ca3af', marginBottom: 4 }}>{rec}</li>
+              ))}
+            </ul>
+            
+            {qa?.passed && (
+              <div style={{ marginTop: 24, textAlign: 'center' }}>
+                <h3 style={{ color: '#10b981' }}>Your game is ready!</h3>
+                <p style={{ color: '#9ca3af', marginBottom: 16 }}>Quality assurance passed. Your game is production-ready.</p>
+                <Button variant="success" onClick={() => {
+                  if (currentProject.generatedCode) {
+                    const blob = new Blob([currentProject.generatedCode], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${currentProject.name.replace(/\s+/g, '_')}.html`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }
+                }}>
+                  Download Game
+                </Button>
+              </div>
+            )}
+          </ContentArea>
+        );
+        
+      default:
+        return <ContentArea>Unknown stage</ContentArea>;
+    }
+  };
+  
   return (
     <Container>
-      <ProjectHeader>
-        <ProjectTitle>{currentProject.name}</ProjectTitle>
-        <HeaderActions>
-          {gameStudio.projects.length > 1 && (
-            <ProjectSelector
-              value={currentProject.id}
-              onChange={(e) => handleProjectChange(e.target.value)}
-              title="Switch project"
-            >
-              {gameStudio.projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-              <option value="new">+ New Project</option>
-            </ProjectSelector>
-          )}
-          <NewProjectButton onClick={() => handleNewProject('other')} title="Create new project">
-            <i className="fas fa-plus"></i>
-            New
-          </NewProjectButton>
-          <NewProjectButton 
-            onClick={handleDeleteProject} 
-            title="Delete project"
-            style={{ background: '#dc3545' }}
-          >
-            <i className="fas fa-trash"></i>
-          </NewProjectButton>
-        </HeaderActions>
-      </ProjectHeader>
-
-      <ProgressIndicator>
-        <ProgressStep active={progressStep === 1} completed={progressStep > 1}>
-          <i className={progressStep > 1 ? 'fas fa-check' : 'fas fa-pencil-alt'}></i>
-          1. Describe
-        </ProgressStep>
-        <ProgressArrow>→</ProgressArrow>
-        <ProgressStep active={progressStep === 2} completed={progressStep > 2}>
-          <i className={progressStep > 2 ? 'fas fa-check' : 'fas fa-hammer'}></i>
-          2. Build
-        </ProgressStep>
-        <ProgressArrow>→</ProgressArrow>
-        <ProgressStep active={progressStep === 3} completed={progressStep > 3}>
-          <i className="fas fa-play"></i>
-          3. Play & Export
-        </ProgressStep>
-      </ProgressIndicator>
+      <StageTimeline>
+        {stageOrder.map((s, index) => {
+          const info = getStageInfo(s);
+          const isActive = s === stage;
+          const isCompleted = index < currentStageIndex;
+          
+          return (
+            <React.Fragment key={s}>
+              {index > 0 && <StageConnector />}
+              <StageItem active={isActive} completed={isCompleted}>
+                <StageNumber completed={isCompleted}>
+                  {isCompleted ? '✓' : info.number}
+                </StageNumber>
+                {info.name}
+              </StageItem>
+            </React.Fragment>
+          );
+        })}
+      </StageTimeline>
       
-      <ChatContainer>
-        <ChatMessages>
-          {currentProject.conversation.map(msg => (
-            <MessageBubble key={msg.id} role={msg.role}>
-              {msg.content.split('\n').map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </MessageBubble>
-          ))}
-          {hasOnlyWelcome && (
-            <ExamplePrompts>
-              <ExamplePromptTitle>
-                <i className="fas fa-lightbulb" style={{ marginRight: 8, color: '#fbbf24' }}></i>
-                Quick start - click an idea:
-              </ExamplePromptTitle>
-              {prompts.map((prompt, i) => (
-                <ExamplePromptButton key={i} onClick={() => handleExamplePrompt(prompt)}>
-                  {prompt}
-                </ExamplePromptButton>
-              ))}
-            </ExamplePrompts>
-          )}
-          {isTyping && (
-            <MessageBubble role="assistant">
-              <TypingIndicator>
-                <span />
-                <span />
-                <span />
-              </TypingIndicator>
-            </MessageBubble>
-          )}
-          <div ref={messagesEndRef} />
-        </ChatMessages>
-        
-        <ChatInputContainer>
-          <ChatInput
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Describe your game idea..."
-            rows={1}
-          />
-          <SendButton 
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isTyping}
-          >
-            <i className="fas fa-paper-plane"></i>
-          </SendButton>
-          <ActionButton 
-            variant="primary"
-            onClick={handleBuildGame}
-            disabled={gameStudio.isGenerating || currentProject.conversation.length === 0}
-            style={{ minWidth: 120 }}
-          >
-            <i className={gameStudio.isGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-hammer'}></i>
-            {gameStudio.isGenerating ? 'Building...' : 'Build Game'}
-          </ActionButton>
-        </ChatInputContainer>
-      </ChatContainer>
+      <StageHeader>
+        <StageTitle>
+          Stage {stageInfo.number}: {stageInfo.name}
+        </StageTitle>
+        <StageDescription>{stageInfo.description}</StageDescription>
+      </StageHeader>
       
-      {currentProject.generatedCode && (
-        <ActionButtons>
-          <ActionButton 
-            variant="success"
-          >
-            <i className="fas fa-download"></i>
-            Export Game
-          </ActionButton>
-        </ActionButtons>
-      )}
+      <MainContent>
+        {renderStageContent()}
+      </MainContent>
     </Container>
   );
 };

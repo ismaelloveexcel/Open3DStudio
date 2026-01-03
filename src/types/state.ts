@@ -53,6 +53,112 @@ export interface FeatureConfig {
 // Game Studio Types
 export type GameType = '2d' | '3d';
 
+// 7-stage professional pipeline for creative directors
+export type ProjectStage = 
+  | 'idea'           // Stage 1: Developing the idea
+  | 'market'         // Stage 2: Compare with market trends
+  | 'revision'       // Stage 3: Revisions for market viability
+  | 'asset_plan'     // Stage 4: Asset generation planning
+  | 'preview'        // Stage 5: Visual sample preview
+  | 'build'          // Stage 6: Full game development
+  | 'qa';            // Stage 7: AI testing and QA
+
+// Stage data structures
+export interface MarketReport {
+  similarGames: { name: string; genre: string; successScore: number; features: string[] }[];
+  trends: string[];
+  opportunities: string[];
+  threats: string[];
+  viabilityScore: number;
+  completed: boolean;
+}
+
+export interface RevisionPlan {
+  originalConcept: string;
+  suggestedChanges: { area: string; suggestion: string; impact: 'high' | 'medium' | 'low' }[];
+  finalConcept: string;
+  approved: boolean;
+}
+
+export interface AssetPlan {
+  realism: 'stylized' | 'semi_realistic' | 'realistic';
+  detailLevel: 'low' | 'medium' | 'high';
+  assets: {
+    id: string;
+    category: 'character' | 'environment' | 'prop' | 'effect' | 'ui';
+    name: string;
+    description: string;
+    priority: 'essential' | 'important' | 'nice_to_have';
+  }[];
+  approved: boolean;
+}
+
+export interface PreviewSample {
+  id: string;
+  name: string;
+  type: 'environment' | 'gameplay' | 'ui';
+  sceneConfig: any;
+  approved: boolean;
+}
+
+export interface QAReport {
+  testsRun: number;
+  issuesFound: { id: string; severity: 'critical' | 'major' | 'minor'; description: string; fixed: boolean }[];
+  performanceScore: number;
+  playabilityScore: number;
+  overallScore: number;
+  recommendations: string[];
+  passed: boolean;
+}
+
+// Visual blueprint generated during concept phase
+export interface GameBlueprint {
+  setting: {
+    name: string;
+    description: string;
+    mood: string;
+    timeOfDay: string;
+    weather: string;
+  };
+  colorPalette: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    atmosphere: string;
+  };
+  environments: {
+    id: string;
+    name: string;
+    description: string;
+    elements: string[];
+  }[];
+  characters: {
+    id: string;
+    name: string;
+    role: string;
+    appearance: string;
+  }[];
+  storyBeats: string[];
+  visualStyle: string;
+}
+
+// Preview scene for concept visualization
+export interface ConceptPreview {
+  id: string;
+  type: 'environment' | 'character' | 'mood';
+  name: string;
+  description: string;
+  approved: boolean;
+  sceneConfig?: {
+    backgroundColor: string;
+    fogColor?: string;
+    fogDensity?: number;
+    ambientLight: string;
+    elements: { type: string; color: string; position: [number, number, number]; scale?: number }[];
+  };
+}
+
 export interface GameProject {
   id: string;
   name: string;
@@ -61,6 +167,7 @@ export interface GameProject {
   gameType: GameType;
   template?: string;
   status: 'ideation' | 'designing' | 'building' | 'testing' | 'deployed';
+  stage: ProjectStage;
   createdAt: Date;
   updatedAt: Date;
   conversation: ChatMessage[];
@@ -69,6 +176,18 @@ export interface GameProject {
   generatedCode?: string;
   previewUrl?: string;
   deploymentUrl?: string;
+  blueprint?: GameBlueprint;
+  conceptPreviews?: ConceptPreview[];
+  storyApproved?: boolean;
+  conceptsApproved?: boolean;
+  // 7-stage pipeline data
+  ideaSummary?: string;
+  marketReport?: MarketReport;
+  revisionPlan?: RevisionPlan;
+  assetPlan?: AssetPlan;
+  previewSamples?: PreviewSample[];
+  qaReport?: QAReport;
+  stageApprovals?: Record<ProjectStage, boolean>;
 }
 
 export type GameGenre = 

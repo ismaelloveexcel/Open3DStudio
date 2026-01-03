@@ -1512,16 +1512,19 @@ export const useStore = create<StoreState>()(
         gameType,
         template,
         status: 'ideation',
+        stage: 'idea',
         createdAt: new Date(),
         updatedAt: new Date(),
         conversation: [{
           id: `msg_${Date.now()}`,
           role: 'assistant',
-          content: `Welcome to Game Studio! 🎮 I'm here to help you create an amazing ${gameType?.toUpperCase()} ${genre} game called "${name}".\n\nLet's start by discussing your vision:\n- What's the main goal of your game?\n- What makes it unique or fun?\n- Do you have any reference games in mind?\n\nTell me about your game idea and I'll help bring it to life!`,
+          content: `Welcome! Let's create "${name}" together.\n\nDescribe your game idea in 4-5 lines:\n- What's the setting/world?\n- What does the player do?\n- What's the mood/atmosphere?\n\nOnce we agree on your vision, I'll show you visual concepts before building anything.`,
           timestamp: new Date()
         }],
         gameConfig: defaultGameConfig,
-        assets: []
+        assets: [],
+        storyApproved: false,
+        conceptsApproved: false
       };
       
       set((state) => {
