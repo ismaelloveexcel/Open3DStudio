@@ -395,12 +395,16 @@ const GameStudioPanel: React.FC = () => {
           if (!currentProject.assetPlan) {
             throw new Error('Asset plan not available');
           }
-          updateGameProject(currentProject.id, { stage: 'build' });
+          const projectId = currentProject.id;
+          const initialAssetPlan = { ...currentProject.assetPlan };
+          let buildingAssets = [...initialAssetPlan.assets];
+          
+          updateGameProject(projectId, { stage: 'build' });
           setIsProcessing(false);
           
-          await runAssetPipeline(currentProject.assetPlan, {
+          await runAssetPipeline(initialAssetPlan, {
             onAssetProgress: (progress: PipelineProgress) => {
-              const updatedAssets = currentProject.assetPlan!.assets.map(a => {
+              buildingAssets = buildingAssets.map(a => {
                 if (a.id === progress.assetId) {
                   return {
                     ...a,
@@ -416,27 +420,26 @@ const GameStudioPanel: React.FC = () => {
                 }
                 return a;
               });
-              updateGameProject(currentProject.id, { 
-                assetPlan: { ...currentProject.assetPlan!, assets: updatedAssets }
+              updateGameProject(projectId, { 
+                assetPlan: { ...initialAssetPlan, assets: buildingAssets }
               });
             },
             onAssetComplete: (assetId: string, finalAsset: AssetProductionItem) => {
-              const updatedAssets = currentProject.assetPlan!.assets.map(a => 
-                a.id === assetId ? finalAsset : a
-              );
-              const completedCount = updatedAssets.filter(a => a.overallProgress === 100).length;
-              updateGameProject(currentProject.id, { 
+              buildingAssets = buildingAssets.map(a => a.id === assetId ? finalAsset : a);
+              const completedCount = buildingAssets.filter(a => a.overallProgress === 100).length;
+              updateGameProject(projectId, { 
                 assetPlan: { 
-                  ...currentProject.assetPlan!, 
-                  assets: updatedAssets,
+                  ...initialAssetPlan, 
+                  assets: buildingAssets,
                   completedAssets: completedCount
                 }
               });
             },
             onPipelineComplete: (assets: AssetProductionItem[]) => {
-              const gameCode = GameCodeGenerator.generateHTML5Game(currentProject);
-              updateGameProject(currentProject.id, { 
-                assetPlan: { ...currentProject.assetPlan!, assets, completedAssets: assets.length },
+              const finalProject = useStore.getState().gameStudio.projects.find(p => p.id === projectId);
+              const gameCode = GameCodeGenerator.generateHTML5Game(finalProject || currentProject);
+              updateGameProject(projectId, { 
+                assetPlan: { ...initialAssetPlan, assets, completedAssets: assets.length },
                 generatedCode: gameCode 
               });
             },
