@@ -57,27 +57,23 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor
+    // Request interceptor - silenced for cleaner console
     this.client.interceptors.request.use(
       (config) => {
-        console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
         return config;
       },
       (error) => {
-        console.error('[API] Request error:', error);
         return Promise.reject(error);
       }
     );
 
-    // Response interceptor
+    // Response interceptor - silenced for cleaner console
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`[API] ${response.status} ${response.config.url}`);
         return response;
       },
       (error: AxiosError) => {
         const apiError = this.handleError(error);
-        console.error('[API] Response error:', apiError);
         return Promise.reject(apiError);
       }
     );

@@ -230,6 +230,67 @@ const StatusBar = styled.div`
   color: ${props => props.theme.colors.text.secondary};
 `;
 
+const ProgressIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${props => props.theme.spacing.sm};
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background.secondary};
+  border-radius: ${props => props.theme.borderRadius.md};
+  margin-bottom: ${props => props.theme.spacing.sm};
+`;
+
+const ProgressStep = styled.div<{ active?: boolean; completed?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.xs};
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
+  border-radius: ${props => props.theme.borderRadius.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
+  background: ${props => props.completed ? props.theme.colors.success + '30' : props.active ? props.theme.colors.primary[500] + '30' : 'transparent'};
+  color: ${props => props.completed ? props.theme.colors.success : props.active ? props.theme.colors.primary[400] : props.theme.colors.text.muted};
+  border: 1px solid ${props => props.completed ? props.theme.colors.success : props.active ? props.theme.colors.primary[500] : props.theme.colors.border.default};
+`;
+
+const ProgressArrow = styled.span`
+  color: ${props => props.theme.colors.text.muted};
+  font-size: 12px;
+`;
+
+const ExamplePrompts = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${props => props.theme.spacing.sm};
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background.secondary};
+  border-radius: ${props => props.theme.borderRadius.md};
+  margin: ${props => props.theme.spacing.sm} 0;
+`;
+
+const ExamplePromptTitle = styled.div`
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  color: ${props => props.theme.colors.text.secondary};
+  margin-bottom: ${props => props.theme.spacing.xs};
+`;
+
+const ExamplePromptButton = styled.button`
+  background: ${props => props.theme.colors.background.primary};
+  border: 1px solid ${props => props.theme.colors.border.default};
+  color: ${props => props.theme.colors.text.primary};
+  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  border-radius: ${props => props.theme.borderRadius.md};
+  font-size: ${props => props.theme.typography.fontSize.sm};
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.theme.colors.primary[500]}20;
+    border-color: ${props => props.theme.colors.primary[500]};
+  }
+`;
+
 const StatusBadge = styled.span<{ status: string }>`
   background: ${props => {
     switch (props.status) {
@@ -458,6 +519,50 @@ const GameStudioPanel: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentProject?.conversation]);
   
+  const examplePrompts: Record<GameGenre, string[]> = {
+    platformer: [
+      "Make a platformer where I collect coins and avoid spikes",
+      "Create a jungle adventure with jumping puzzles",
+      "Build a side-scroller with power-ups and enemies"
+    ],
+    puzzle: [
+      "Create a sliding puzzle game with colorful tiles",
+      "Make a match-3 puzzle with gems",
+      "Build a brain teaser with increasing difficulty"
+    ],
+    shooter: [
+      "Make a space shooter with alien enemies",
+      "Create a top-down shooter with waves of enemies",
+      "Build an arcade shooter with power-ups"
+    ],
+    racing: [
+      "Make a simple car racing game",
+      "Create a space racing game with obstacles",
+      "Build an endless runner with speed boosts"
+    ],
+    arcade: [
+      "Create a classic snake game",
+      "Make a pac-man style game",
+      "Build an endless runner with high scores"
+    ],
+    adventure: [
+      "Make an exploration game with treasure hunting",
+      "Create a maze adventure with keys and doors",
+      "Build a quest game with collectibles"
+    ],
+    rpg: ["Create an RPG with turn-based combat"],
+    simulation: ["Make a simple farming simulation"],
+    educational: ["Create a math quiz game"],
+    other: ["Make a fun game with your own idea"]
+  };
+
+  const getProgressStep = () => {
+    if (!currentProject) return 0;
+    if (currentProject.generatedCode) return 3;
+    if (currentProject.conversation.length > 1) return 2;
+    return 1;
+  };
+
   const handleNewProject = (genre: GameGenre) => {
     const genreNames: Record<GameGenre, string> = {
       platformer: 'Platformer Adventure',
@@ -473,6 +578,11 @@ const GameStudioPanel: React.FC = () => {
     };
     
     createGameProject(genre, genreNames[genre]);
+  };
+
+  const handleExamplePrompt = (prompt: string) => {
+    setInputValue(prompt);
+    inputRef.current?.focus();
   };
   
   const handleProjectChange = (projectId: string) => {
@@ -578,6 +688,11 @@ const GameStudioPanel: React.FC = () => {
     );
   }
   
+  const progressStep = getProgressStep();
+  const hasOnlyWelcome = currentProject.conversation.length <= 1 && 
+    (currentProject.conversation.length === 0 || currentProject.conversation[0]?.role === 'assistant');
+  const prompts = examplePrompts[currentProject.genre] || examplePrompts.other;
+
   return (
     <Container>
       <ProjectHeader>
@@ -608,13 +723,23 @@ const GameStudioPanel: React.FC = () => {
           </NewProjectButton>
         </HeaderActions>
       </ProjectHeader>
-      
-      <StatusBar>
-        <span>Genre: {currentProject.genre}</span>
-        <StatusBadge status={currentProject.status}>
-          {currentProject.status}
-        </StatusBadge>
-      </StatusBar>
+
+      <ProgressIndicator>
+        <ProgressStep active={progressStep === 1} completed={progressStep > 1}>
+          <i className={progressStep > 1 ? 'fas fa-check' : 'fas fa-pencil-alt'}></i>
+          1. Describe
+        </ProgressStep>
+        <ProgressArrow>→</ProgressArrow>
+        <ProgressStep active={progressStep === 2} completed={progressStep > 2}>
+          <i className={progressStep > 2 ? 'fas fa-check' : 'fas fa-hammer'}></i>
+          2. Build
+        </ProgressStep>
+        <ProgressArrow>→</ProgressArrow>
+        <ProgressStep active={progressStep === 3} completed={progressStep > 3}>
+          <i className="fas fa-play"></i>
+          3. Play & Export
+        </ProgressStep>
+      </ProgressIndicator>
       
       <ChatContainer>
         <ChatMessages>
@@ -625,6 +750,19 @@ const GameStudioPanel: React.FC = () => {
               ))}
             </MessageBubble>
           ))}
+          {hasOnlyWelcome && (
+            <ExamplePrompts>
+              <ExamplePromptTitle>
+                <i className="fas fa-lightbulb" style={{ marginRight: 8, color: '#fbbf24' }}></i>
+                Quick start - click an idea:
+              </ExamplePromptTitle>
+              {prompts.map((prompt, i) => (
+                <ExamplePromptButton key={i} onClick={() => handleExamplePrompt(prompt)}>
+                  {prompt}
+                </ExamplePromptButton>
+              ))}
+            </ExamplePrompts>
+          )}
           {isTyping && (
             <MessageBubble role="assistant">
               <TypingIndicator>
@@ -636,21 +774,6 @@ const GameStudioPanel: React.FC = () => {
           )}
           <div ref={messagesEndRef} />
         </ChatMessages>
-        
-        <QuickActions>
-          <QuickActionButton onClick={() => handleQuickAction('Help me design the game mechanics')}>
-            🎮 Game Mechanics
-          </QuickActionButton>
-          <QuickActionButton onClick={() => handleQuickAction('Generate 3D assets for my game')}>
-            🎨 Create Assets
-          </QuickActionButton>
-          <QuickActionButton onClick={() => handleQuickAction('Build and preview my game')}>
-            🔨 Build Game
-          </QuickActionButton>
-          <QuickActionButton onClick={() => handleQuickAction('How do I deploy my game?')}>
-            🚀 Deploy
-          </QuickActionButton>
-        </QuickActions>
         
         <ChatInputContainer>
           <ChatInput
@@ -667,26 +790,28 @@ const GameStudioPanel: React.FC = () => {
           >
             <i className="fas fa-paper-plane"></i>
           </SendButton>
+          <ActionButton 
+            variant="primary"
+            onClick={handleBuildGame}
+            disabled={gameStudio.isGenerating || currentProject.conversation.length === 0}
+            style={{ minWidth: 120 }}
+          >
+            <i className={gameStudio.isGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-hammer'}></i>
+            {gameStudio.isGenerating ? 'Building...' : 'Build Game'}
+          </ActionButton>
         </ChatInputContainer>
       </ChatContainer>
       
-      <ActionButtons>
-        <ActionButton 
-          variant="primary"
-          onClick={handleBuildGame}
-          disabled={gameStudio.isGenerating}
-        >
-          <i className={gameStudio.isGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-hammer'}></i>
-          {gameStudio.isGenerating ? 'Building...' : 'Build Game'}
-        </ActionButton>
-        <ActionButton 
-          variant="success"
-          disabled={!currentProject.generatedCode}
-        >
-          <i className="fas fa-download"></i>
-          Export
-        </ActionButton>
-      </ActionButtons>
+      {currentProject.generatedCode && (
+        <ActionButtons>
+          <ActionButton 
+            variant="success"
+          >
+            <i className="fas fa-download"></i>
+            Export Game
+          </ActionButton>
+        </ActionButtons>
+      )}
     </Container>
   );
 };

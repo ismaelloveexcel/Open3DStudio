@@ -226,13 +226,10 @@ const useApiInitialization = () => {
               console.warn('Failed to initialize tasks:', error);
             }
           }
-        } else {
-          console.warn(`API not connected: ${settings.apiEndpoint}`);
         }
 
         setApiInitialized(true);
-      } catch (error) {
-        console.error('Failed to initialize API:', error);
+      } catch {
         setApiInitialized(true);
       }
     };
