@@ -144,13 +144,6 @@ interface TopBarProps {
 
 const modules: { id: ModuleType; name: string; icon: string }[] = [
   { id: 'game-studio', name: 'Game Studio', icon: 'fas fa-gamepad' },
-  { id: 'mesh-generation', name: 'MeshGen', icon: 'fas fa-shapes' },
-  { id: 'mesh-retopology', name: 'LowPoly Retopo', icon: 'fas fa-project-diagram' },
-  { id: 'mesh-uv-unwrapping', name: 'UV Unwrap', icon: 'fas fa-map' },
-  { id: 'mesh-painting', name: 'TextureGen', icon: 'fas fa-paint-brush' },
-  { id: 'mesh-segmentation', name: 'Mesh Segmentation', icon: 'fas fa-cut' },
-  { id: 'part-completion', name: 'Part Completion', icon: 'fas fa-puzzle-piece' },
-  { id: 'auto-rigging', name: 'Auto Rig', icon: 'fas fa-sitemap' },
 ];
 
 const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {

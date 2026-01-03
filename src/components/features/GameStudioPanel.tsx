@@ -12,7 +12,9 @@ import {
   runQATests,
   getStageInfo
 } from '../../services/gameStudioServices';
+import { runAssetPipeline, PipelineProgress } from '../../services/assetPipelineService';
 import { GameCodeGenerator } from '../../utils/gameCodeGenerator';
+import { AssetProductionItem } from '../../types/state';
 
 const Container = styled.div`
   display: flex;
@@ -390,11 +392,59 @@ const GameStudioPanel: React.FC = () => {
           break;
           
         case 'build':
-          setProcessingMessage('Building your game...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          const gameCode = GameCodeGenerator.generateHTML5Game(currentProject);
-          updateGameProject(currentProject.id, { stage: 'build', generatedCode: gameCode });
-          break;
+          if (!currentProject.assetPlan) {
+            throw new Error('Asset plan not available');
+          }
+          updateGameProject(currentProject.id, { stage: 'build' });
+          setIsProcessing(false);
+          
+          await runAssetPipeline(currentProject.assetPlan, {
+            onAssetProgress: (progress: PipelineProgress) => {
+              const updatedAssets = currentProject.assetPlan!.assets.map(a => {
+                if (a.id === progress.assetId) {
+                  return {
+                    ...a,
+                    currentStep: progress.currentStep,
+                    overallProgress: progress.overallProgress,
+                    stepProgress: {
+                      ...a.stepProgress,
+                      ...(progress.currentStep ? {
+                        [progress.currentStep]: { status: 'generating' as const, progress: progress.stepProgress }
+                      } : {})
+                    }
+                  };
+                }
+                return a;
+              });
+              updateGameProject(currentProject.id, { 
+                assetPlan: { ...currentProject.assetPlan!, assets: updatedAssets }
+              });
+            },
+            onAssetComplete: (assetId: string, finalAsset: AssetProductionItem) => {
+              const updatedAssets = currentProject.assetPlan!.assets.map(a => 
+                a.id === assetId ? finalAsset : a
+              );
+              const completedCount = updatedAssets.filter(a => a.overallProgress === 100).length;
+              updateGameProject(currentProject.id, { 
+                assetPlan: { 
+                  ...currentProject.assetPlan!, 
+                  assets: updatedAssets,
+                  completedAssets: completedCount
+                }
+              });
+            },
+            onPipelineComplete: (assets: AssetProductionItem[]) => {
+              const gameCode = GameCodeGenerator.generateHTML5Game(currentProject);
+              updateGameProject(currentProject.id, { 
+                assetPlan: { ...currentProject.assetPlan!, assets, completedAssets: assets.length },
+                generatedCode: gameCode 
+              });
+            },
+            onError: (assetId: string, step, error: string) => {
+              addNotification({ type: 'error', title: 'Asset Error', message: `Failed to process ${assetId}: ${error}`, duration: 5000 });
+            }
+          });
+          return;
           
         case 'qa':
           setProcessingMessage('Running quality tests...');
@@ -552,10 +602,18 @@ const GameStudioPanel: React.FC = () => {
         
       case 'asset_plan':
         const assets = currentProject.assetPlan;
+        const pipelineStepLabels: Record<string, string> = {
+          meshgen: 'MeshGen',
+          segmentation: 'Segment',
+          part_completion: 'Complete',
+          retopology: 'Retopo',
+          uv_unwrap: 'UV',
+          texturing: 'Texture'
+        };
         return (
           <ContentArea>
             <HeaderRow>
-              <h4 style={{ margin: 0 }}>Asset Generation Plan</h4>
+              <h4 style={{ margin: 0 }}>Asset Production Blueprint</h4>
               <div style={{ display: 'flex', gap: 8 }}>
                 <SelectControl 
                   value={assets?.realism || 'semi_realistic'}
@@ -581,14 +639,38 @@ const GameStudioPanel: React.FC = () => {
             </HeaderRow>
             
             <p style={{ color: '#9ca3af', margin: '16px 0' }}>
-              These assets will be generated for your game. Adjust realism and detail level above.
+              Each asset will be automatically processed through the AI pipeline. The stages shown below will run automatically during the build.
             </p>
             
             <CardGrid>
               {assets?.assets.map((asset) => (
                 <Card key={asset.id}>
                   <h4>{asset.name}</h4>
-                  <p>{asset.description}</p>
+                  <p style={{ fontSize: 12, marginBottom: 8 }}>{asset.description}</p>
+                  
+                  {asset.pipeline.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4 }}>AI Pipeline:</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {asset.pipeline.map((step, i) => (
+                          <span key={step} style={{ 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '2px 6px', 
+                            borderRadius: 4, 
+                            fontSize: 9,
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            color: '#a5b4fc'
+                          }}>
+                            {pipelineStepLabels[step]}
+                            {i < asset.pipeline.length - 1 && <span style={{ opacity: 0.5 }}>→</span>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
                     <span style={{ 
                       padding: '2px 8px', 
@@ -613,7 +695,7 @@ const GameStudioPanel: React.FC = () => {
             
             <div style={{ marginTop: 24 }}>
               <Button variant="success" onClick={proceedToNextStage}>
-                Approve Assets & Generate Previews
+                Approve Blueprint & Generate Previews
               </Button>
             </div>
           </ContentArea>
@@ -672,17 +754,95 @@ const GameStudioPanel: React.FC = () => {
         );
         
       case 'build':
+        const buildAssets = currentProject.assetPlan?.assets || [];
+        const buildStepLabels: Record<string, string> = {
+          meshgen: 'Generating Mesh',
+          segmentation: 'Segmenting',
+          part_completion: 'Completing',
+          retopology: 'Retopology',
+          uv_unwrap: 'UV Unwrap',
+          texturing: 'Texturing'
+        };
+        const completedCount = buildAssets.filter(a => a.overallProgress === 100).length;
+        const totalBuildProgress = buildAssets.length > 0 
+          ? buildAssets.reduce((sum, a) => sum + a.overallProgress, 0) / buildAssets.length 
+          : 0;
+        const buildComplete = totalBuildProgress === 100;
+        
         return (
           <ContentArea>
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <h2 style={{ color: '#10b981', marginBottom: 16 }}>Game Built Successfully!</h2>
-              <p style={{ color: '#9ca3af', marginBottom: 24 }}>
-                Your game has been generated. Click below to run quality assurance tests.
-              </p>
-              <Button variant="success" onClick={proceedToNextStage}>
-                Run QA Tests
-              </Button>
+            <HeaderRow>
+              <h4 style={{ margin: 0 }}>
+                {buildComplete ? 'Build Complete!' : 'Building Assets...'}
+              </h4>
+              <span style={{ color: '#9ca3af' }}>
+                {completedCount}/{buildAssets.length} assets complete
+              </span>
+            </HeaderRow>
+            
+            <div style={{ margin: '16px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 12 }}>Overall Progress</span>
+                <span style={{ fontSize: 12 }}>{Math.round(totalBuildProgress)}%</span>
+              </div>
+              <ProgressBar value={totalBuildProgress} />
             </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {buildAssets.map((asset) => (
+                <Card key={asset.id} approved={asset.overallProgress === 100}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <h4 style={{ margin: 0 }}>{asset.name}</h4>
+                    <span style={{ 
+                      fontSize: 12, 
+                      color: asset.overallProgress === 100 ? '#10b981' : '#9ca3af'
+                    }}>
+                      {asset.overallProgress === 100 ? '✓ Complete' : `${Math.round(asset.overallProgress)}%`}
+                    </span>
+                  </div>
+                  
+                  {asset.pipeline.length > 0 && (
+                    <>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                        {asset.pipeline.map((step) => {
+                          const stepStatus = asset.stepProgress[step];
+                          const isActive = asset.currentStep === step;
+                          const isComplete = stepStatus?.status === 'completed';
+                          return (
+                            <span key={step} style={{ 
+                              padding: '2px 6px', 
+                              borderRadius: 4, 
+                              fontSize: 9,
+                              background: isComplete ? '#10b98130' : isActive ? '#6366f130' : '#1f2937',
+                              color: isComplete ? '#10b981' : isActive ? '#a5b4fc' : '#6b7280',
+                              border: isActive ? '1px solid #6366f1' : '1px solid transparent'
+                            }}>
+                              {isComplete ? '✓' : ''} {buildStepLabels[step] || step}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <ProgressBar value={asset.overallProgress} />
+                    </>
+                  )}
+                  
+                  {asset.pipeline.length === 0 && (
+                    <span style={{ fontSize: 11, color: '#6b7280' }}>No processing needed</span>
+                  )}
+                </Card>
+              ))}
+            </div>
+            
+            {buildComplete && (
+              <div style={{ marginTop: 24, textAlign: 'center' }}>
+                <p style={{ color: '#10b981', marginBottom: 16 }}>
+                  All assets generated successfully!
+                </p>
+                <Button variant="success" onClick={proceedToNextStage}>
+                  Run QA Tests
+                </Button>
+              </div>
+            )}
           </ContentArea>
         );
         

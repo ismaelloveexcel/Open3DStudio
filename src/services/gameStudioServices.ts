@@ -1,4 +1,4 @@
-import { GameProject, GameGenre, MarketReport, RevisionPlan, AssetPlan, PreviewSample, QAReport } from '../types/state';
+import { GameProject, GameGenre, MarketReport, RevisionPlan, AssetPlan, PreviewSample, QAReport, AssetProductionItem, AssetPipelineStep, AssetStatus } from '../types/state';
 
 const marketData: Record<GameGenre, { topGames: { name: string; features: string[] }[]; trends: string[]; opportunities: string[] }> = {
   platformer: {
@@ -152,59 +152,93 @@ export async function generateRevisionPlan(project: GameProject, marketReport: M
   };
 }
 
+function createAssetProductionItem(
+  id: string, 
+  category: AssetProductionItem['category'], 
+  name: string, 
+  description: string, 
+  priority: AssetProductionItem['priority']
+): AssetProductionItem {
+  const pipelineForCategory: Record<AssetProductionItem['category'], AssetPipelineStep[]> = {
+    character: ['meshgen', 'segmentation', 'part_completion', 'retopology', 'uv_unwrap', 'texturing'],
+    environment: ['meshgen', 'retopology', 'uv_unwrap', 'texturing'],
+    prop: ['meshgen', 'retopology', 'uv_unwrap', 'texturing'],
+    effect: [],
+    ui: []
+  };
+  
+  const pipeline = pipelineForCategory[category];
+  const defaultStepProgress: Record<AssetPipelineStep, { status: AssetStatus; progress: number }> = {
+    meshgen: { status: 'pending', progress: 0 },
+    segmentation: { status: 'pending', progress: 0 },
+    part_completion: { status: 'pending', progress: 0 },
+    retopology: { status: 'pending', progress: 0 },
+    uv_unwrap: { status: 'pending', progress: 0 },
+    texturing: { status: 'pending', progress: 0 }
+  };
+  
+  return {
+    id,
+    category,
+    name,
+    description,
+    priority,
+    pipeline,
+    currentStep: null,
+    stepProgress: defaultStepProgress,
+    overallProgress: 0
+  };
+}
+
 export async function generateAssetPlan(project: GameProject): Promise<AssetPlan> {
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   const ideaText = project.ideaSummary || project.conversation.filter(m => m.role === 'user').map(m => m.content).join(' ');
   const lowerIdea = ideaText.toLowerCase();
   
-  const assets: AssetPlan['assets'] = [];
+  const assets: AssetProductionItem[] = [];
   
-  assets.push({
-    id: 'asset_player',
-    category: 'character',
-    name: 'Player Character',
-    description: 'Main playable character or first-person viewpoint',
-    priority: 'essential'
-  });
+  assets.push(createAssetProductionItem('asset_player', 'character', 'Player Character', 'Main playable character or first-person viewpoint', 'essential'));
   
   if (lowerIdea.includes('mall') || lowerIdea.includes('building') || lowerIdea.includes('indoor')) {
-    assets.push({ id: 'asset_interior', category: 'environment', name: 'Interior Environment', description: 'Indoor spaces with walls, floors, ceiling', priority: 'essential' });
+    assets.push(createAssetProductionItem('asset_interior', 'environment', 'Interior Environment', 'Indoor spaces with walls, floors, ceiling', 'essential'));
   }
   
   if (lowerIdea.includes('metro') || lowerIdea.includes('station') || lowerIdea.includes('subway')) {
-    assets.push({ id: 'asset_metro', category: 'environment', name: 'Metro Station', description: 'Underground transit area', priority: 'essential' });
+    assets.push(createAssetProductionItem('asset_metro', 'environment', 'Metro Station', 'Underground transit area', 'essential'));
   }
   
   if (lowerIdea.includes('fountain') || lowerIdea.includes('water')) {
-    assets.push({ id: 'asset_fountain', category: 'prop', name: 'Water Fountain', description: 'Decorative water feature', priority: 'important' });
+    assets.push(createAssetProductionItem('asset_fountain', 'prop', 'Water Fountain', 'Decorative water feature', 'important'));
   }
   
   if (lowerIdea.includes('tower') || lowerIdea.includes('burj') || lowerIdea.includes('skyscraper')) {
-    assets.push({ id: 'asset_tower', category: 'environment', name: 'Landmark Tower', description: 'Iconic tall building in background', priority: 'important' });
+    assets.push(createAssetProductionItem('asset_tower', 'environment', 'Landmark Tower', 'Iconic tall building in background', 'important'));
   }
   
   if (lowerIdea.includes('vine') || lowerIdea.includes('overgrown') || lowerIdea.includes('upside down')) {
-    assets.push({ id: 'asset_vines', category: 'prop', name: 'Creeping Vines', description: 'Organic growth covering surfaces', priority: 'essential' });
-    assets.push({ id: 'asset_decay', category: 'effect', name: 'Decay Effects', description: 'Particles and fog for eerie atmosphere', priority: 'important' });
+    assets.push(createAssetProductionItem('asset_vines', 'prop', 'Creeping Vines', 'Organic growth covering surfaces', 'essential'));
+    assets.push(createAssetProductionItem('asset_decay', 'effect', 'Decay Effects', 'Particles and fog for eerie atmosphere', 'important'));
   }
   
   if (lowerIdea.includes('dark') || lowerIdea.includes('eerie') || lowerIdea.includes('scary')) {
-    assets.push({ id: 'asset_lighting', category: 'effect', name: 'Atmospheric Lighting', description: 'Moody, dim lighting with shadows', priority: 'essential' });
-    assets.push({ id: 'asset_particles', category: 'effect', name: 'Ambient Particles', description: 'Floating dust, spores, or embers', priority: 'important' });
+    assets.push(createAssetProductionItem('asset_lighting', 'effect', 'Atmospheric Lighting', 'Moody, dim lighting with shadows', 'essential'));
+    assets.push(createAssetProductionItem('asset_particles', 'effect', 'Ambient Particles', 'Floating dust, spores, or embers', 'important'));
   }
   
-  assets.push({ id: 'asset_ui', category: 'ui', name: 'Game UI', description: 'Menus, HUD, and interface elements', priority: 'essential' });
+  assets.push(createAssetProductionItem('asset_ui', 'ui', 'Game UI', 'Menus, HUD, and interface elements', 'essential'));
   
   if (assets.length < 5) {
-    assets.push({ id: 'asset_ground', category: 'environment', name: 'Ground/Floor', description: 'Main walkable surface', priority: 'essential' });
-    assets.push({ id: 'asset_props', category: 'prop', name: 'Environmental Props', description: 'Decorative objects and obstacles', priority: 'important' });
+    assets.push(createAssetProductionItem('asset_ground', 'environment', 'Ground/Floor', 'Main walkable surface', 'essential'));
+    assets.push(createAssetProductionItem('asset_props', 'prop', 'Environmental Props', 'Decorative objects and obstacles', 'important'));
   }
   
   return {
     realism: 'semi_realistic',
     detailLevel: 'medium',
     assets,
+    totalAssets: assets.length,
+    completedAssets: 0,
     approved: false
   };
 }

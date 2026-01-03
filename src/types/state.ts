@@ -80,16 +80,37 @@ export interface RevisionPlan {
   approved: boolean;
 }
 
+// Asset production pipeline step types
+export type AssetPipelineStep = 
+  | 'meshgen'           // Generate base mesh
+  | 'segmentation'      // Segment mesh into parts
+  | 'part_completion'   // Complete/enhance parts
+  | 'retopology'        // Low-poly retopology
+  | 'uv_unwrap'         // UV unwrapping
+  | 'texturing';        // Texture generation
+
+export type AssetStatus = 'pending' | 'generating' | 'completed' | 'failed';
+
+export interface AssetProductionItem {
+  id: string;
+  category: 'character' | 'environment' | 'prop' | 'effect' | 'ui';
+  name: string;
+  description: string;
+  priority: 'essential' | 'important' | 'nice_to_have';
+  pipeline: AssetPipelineStep[];
+  currentStep: AssetPipelineStep | null;
+  stepProgress: Record<AssetPipelineStep, { status: AssetStatus; progress: number; jobId?: string; result?: any }>;
+  overallProgress: number;
+  previewUrl?: string;
+  finalAssetUrl?: string;
+}
+
 export interface AssetPlan {
   realism: 'stylized' | 'semi_realistic' | 'realistic';
   detailLevel: 'low' | 'medium' | 'high';
-  assets: {
-    id: string;
-    category: 'character' | 'environment' | 'prop' | 'effect' | 'ui';
-    name: string;
-    description: string;
-    priority: 'essential' | 'important' | 'nice_to_have';
-  }[];
+  assets: AssetProductionItem[];
+  totalAssets: number;
+  completedAssets: number;
   approved: boolean;
 }
 
