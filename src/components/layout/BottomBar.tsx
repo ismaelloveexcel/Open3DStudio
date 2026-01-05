@@ -8,74 +8,123 @@ import TransformInputModal from '../ui/TransformInputModal';
 const BottomBarContainer = styled.footer`
   background: ${props => props.theme.colors.background.secondary};
   border-top: 1px solid ${props => props.theme.colors.border.default};
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.lg};
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
+  min-height: 44px;
   flex-shrink: 0;
+  gap: ${props => props.theme.spacing.xs};
+  overflow-x: auto;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.lg};
+    min-height: 48px;
+    gap: ${props => props.theme.spacing.sm};
+  }
 `;
 
 const ControlGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: ${props => props.theme.spacing.sm};
+  gap: ${props => props.theme.spacing.xs};
+  flex-shrink: 0;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    gap: ${props => props.theme.spacing.sm};
+  }
 `;
 
-const ControlButton = styled.button<{ active?: boolean }>`
-  background: ${props => props.active 
+const ControlButton = styled.button<{ $active?: boolean }>`
+  background: ${props => props.$active 
     ? props.theme.colors.primary[500]
     : 'transparent'
   };
-  border: 1px solid ${props => props.active 
+  border: 1px solid ${props => props.$active 
     ? props.theme.colors.primary[500]
     : props.theme.colors.border.default
   };
-  color: ${props => props.active 
+  color: ${props => props.$active 
     ? 'white'
     : props.theme.colors.text.secondary
   };
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: ${props => props.theme.borderRadius.sm};
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: ${props => props.theme.transitions.fast};
+  font-size: 12px;
+  flex-shrink: 0;
   
   &:hover {
-    background: ${props => props.active 
+    background: ${props => props.$active 
       ? props.theme.colors.primary[600]
       : 'rgba(255, 255, 255, 0.05)'
     };
-    border-color: ${props => props.active 
+    border-color: ${props => props.$active 
       ? props.theme.colors.primary[600]
       : props.theme.colors.border.hover
     };
-    color: ${props => props.active 
+    color: ${props => props.$active 
       ? 'white'
       : props.theme.colors.text.primary
     };
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
 `;
 
 const Separator = styled.div`
   width: 1px;
-  height: 20px;
+  height: 16px;
   background: ${props => props.theme.colors.border.default};
-  margin: 0 ${props => props.theme.spacing.sm};
+  margin: 0 ${props => props.theme.spacing.xs};
+  flex-shrink: 0;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    height: 20px;
+    margin: 0 ${props => props.theme.spacing.sm};
+  }
 `;
 
 const StatusInfo = styled.div`
-  display: flex;
+  display: none;
   align-items: center;
-  gap: ${props => props.theme.spacing.md};
-  font-size: ${props => props.theme.typography.fontSize.sm};
+  gap: ${props => props.theme.spacing.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
   color: ${props => props.theme.colors.text.secondary};
+  flex-shrink: 0;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    display: flex;
+    gap: ${props => props.theme.spacing.md};
+    font-size: ${props => props.theme.typography.fontSize.sm};
+  }
 `;
 
-const StatusIndicator = styled.div<{ online: boolean }>`
+const MobileStatusDot = styled.div<{ $online: boolean }>`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${props => props.$online 
+    ? props.theme.colors.success
+    : props.theme.colors.error
+  };
+  flex-shrink: 0;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    display: none;
+  }
+`;
+
+const StatusIndicator = styled.div<{ $online: boolean }>`
   display: flex;
   align-items: center;
   gap: ${props => props.theme.spacing.xs};
@@ -85,11 +134,11 @@ const StatusIndicator = styled.div<{ online: boolean }>`
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: ${props => props.online 
+    background: ${props => props.$online 
       ? props.theme.colors.success
       : props.theme.colors.error
     };
-    animation: ${props => props.online ? 'pulse 2s infinite' : 'none'};
+    animation: ${props => props.$online ? 'pulse 2s infinite' : 'none'};
   }
 
   @keyframes pulse {
@@ -99,11 +148,15 @@ const StatusIndicator = styled.div<{ online: boolean }>`
 `;
 
 const SystemInfo = styled.div`
-  display: flex;
+  display: none;
   align-items: center;
   gap: ${props => props.theme.spacing.sm};
   font-size: ${props => props.theme.typography.fontSize.xs};
   color: ${props => props.theme.colors.text.muted};
+
+  @media (min-width: ${props => props.theme.breakpoints.lg}) {
+    display: flex;
+  }
 `;
 
 const PerformanceInfo = styled.div`
@@ -283,7 +336,7 @@ const BottomBar: React.FC = () => {
         {sceneTools.map(tool => (
           <ControlButton
             key={tool.id}
-            active={viewport.currentTool === tool.id}
+            $active={viewport.currentTool === tool.id}
             onClick={() => handleToolSelect(tool.id)}
             title={tool.title}
           >
@@ -332,7 +385,7 @@ const BottomBar: React.FC = () => {
         {availableRenderModes.map(mode => (
           <ControlButton
             key={mode.id}
-            active={viewport.renderMode === mode.id}
+            $active={viewport.renderMode === mode.id}
             onClick={() => handleRenderModeChange(mode.id)}
             title={`${mode.title}: ${mode.description}`}
           >
@@ -343,7 +396,7 @@ const BottomBar: React.FC = () => {
         <Separator />
         
         <ControlButton
-          active={viewport.doubleSided}
+          $active={viewport.doubleSided}
           onClick={() => setDoubleSided(!viewport.doubleSided)}
           title="Toggle back face rendering (Double Sided)"
         >
@@ -351,9 +404,12 @@ const BottomBar: React.FC = () => {
         </ControlButton>
       </ControlGroup>
 
-      {/* Status Information */}
+      {/* Mobile Status Indicator */}
+      <MobileStatusDot $online={system.isOnline} title={system.isOnline ? 'Connected' : 'Disconnected'} />
+
+      {/* Status Information (Desktop) */}
       <StatusInfo>
-        <StatusIndicator online={system.isOnline}>
+        <StatusIndicator $online={system.isOnline}>
           {system.isOnline ? 'Connected' : 'Disconnected'}
         </StatusIndicator>
         
@@ -361,12 +417,6 @@ const BottomBar: React.FC = () => {
           <span>Features: {featuresCount}</span>
           <span>Models: {modelsCount}</span>
         </SystemInfo>
-        
-        {/* <PerformanceInfo>
-          <span>FPS: {Math.round(system.performance.frameRate)}</span>
-          <span>CPU: {Math.round(system.performance.cpuUsage)}%</span>
-          <span>Memory: {Math.round(system.performance.memoryUsage)}%</span>
-        </PerformanceInfo> */}
       </StatusInfo>
 
       {/* Transform Input Modal */}

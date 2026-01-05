@@ -91,8 +91,13 @@ const AppContainer = styled.div`
 
 const MainContent = styled.div`
   display: flex;
+  flex-direction: column;
   flex: 1;
   overflow: hidden;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    flex-direction: row;
+  }
 `;
 
 // Hook for Electron integration

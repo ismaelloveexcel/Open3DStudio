@@ -8,12 +8,12 @@ const isElectron = window.electronAPI !== undefined;
 const isMacOS = navigator.platform.toLowerCase().includes('mac');
 const isElectronMacOS = isElectron && isMacOS;
 
-const TopBarContainer = styled.header<{ isElectronMacOS: boolean }>`
+const TopBarContainer = styled.header<{ $isElectronMacOS: boolean }>`
   background: ${props => props.theme.colors.background.secondary};
   border-bottom: 1px solid ${props => props.theme.colors.border.default};
-  padding: 0 ${props => props.theme.spacing.lg};
-  padding-top: ${props => props.isElectronMacOS ? '28px' : '0'};
-  height: ${props => props.isElectronMacOS ? '92px' : '64px'};
+  padding: 0 ${props => props.theme.spacing.sm};
+  padding-top: ${props => props.$isElectronMacOS ? '28px' : '0'};
+  height: ${props => props.$isElectronMacOS ? '80px' : '56px'};
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -21,47 +21,105 @@ const TopBarContainer = styled.header<{ isElectronMacOS: boolean }>`
   flex-shrink: 0;
   position: relative;
   z-index: 100;
+  gap: ${props => props.theme.spacing.sm};
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    padding: 0 ${props => props.theme.spacing.lg};
+    height: ${props => props.$isElectronMacOS ? '92px' : '64px'};
+  }
+`;
+
+const LeftSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.sm};
+`;
+
+const HamburgerButton = styled.button`
+  background: transparent;
+  border: 1px solid ${props => props.theme.colors.border.default};
+  color: ${props => props.theme.colors.text.secondary};
+  width: 40px;
+  height: 40px;
+  border-radius: ${props => props.theme.borderRadius.md};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: ${props => props.theme.transitions.fast};
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: ${props => props.theme.colors.border.hover};
+    color: ${props => props.theme.colors.text.primary};
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.lg}) {
+    display: none;
+  }
 `;
 
 const Logo = styled.div`
   display: flex;
   align-items: center;
-  gap: ${props => props.theme.spacing.sm};
+  gap: ${props => props.theme.spacing.xs};
   font-weight: ${props => props.theme.typography.fontWeight.bold};
-  font-size: ${props => props.theme.typography.fontSize.lg};
+  font-size: ${props => props.theme.typography.fontSize.base};
   letter-spacing: -0.02em;
 
   i {
     color: ${props => props.theme.colors.primary[500]};
-    font-size: 24px;
+    font-size: 20px;
     filter: drop-shadow(0 0 8px ${props => props.theme.colors.primary[500]}40);
+  }
+
+  span {
+    display: none;
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.sm}) {
+    gap: ${props => props.theme.spacing.sm};
+    font-size: ${props => props.theme.typography.fontSize.lg};
+    
+    i {
+      font-size: 24px;
+    }
+
+    span {
+      display: inline;
+    }
   }
 `;
 
 const MainNav = styled.nav`
-  display: flex;
+  display: none;
   gap: 2px;
   background: ${props => props.theme.colors.background.tertiary};
   padding: 4px;
   border-radius: ${props => props.theme.borderRadius.lg};
   border: 1px solid ${props => props.theme.colors.border.default};
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    display: flex;
+  }
 `;
 
-const NavItem = styled.button<{ active: boolean }>`
-  background: ${props => props.active 
+const NavItem = styled.button<{ $active: boolean }>`
+  background: ${props => props.$active 
     ? `linear-gradient(135deg, ${props.theme.colors.primary[600]} 0%, ${props.theme.colors.primary[500]} 100%)`
     : 'transparent'
   };
   border: none;
-  color: ${props => props.active 
+  color: ${props => props.$active 
     ? 'white' 
     : props.theme.colors.text.secondary
   };
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: ${props => props.theme.borderRadius.md};
   display: flex;
   align-items: center;
-  gap: ${props => props.theme.spacing.sm};
+  gap: ${props => props.theme.spacing.xs};
   cursor: pointer;
   transition: ${props => props.theme.transitions.normal};
   font-size: ${props => props.theme.typography.fontSize.sm};
@@ -71,38 +129,43 @@ const NavItem = styled.button<{ active: boolean }>`
   letter-spacing: -0.01em;
 
   &:hover {
-    background: ${props => props.active 
+    background: ${props => props.$active 
       ? `linear-gradient(135deg, ${props.theme.colors.primary[600]} 0%, ${props.theme.colors.primary[500]} 100%)`
       : 'rgba(255, 255, 255, 0.06)'
     };
-    color: ${props => props.active 
+    color: ${props => props.$active 
       ? 'white' 
       : props.theme.colors.text.primary
     };
-    transform: translateY(-1px);
-    box-shadow: ${props => props.theme.shadows.sm};
   }
 
-  ${props => props.active && `
+  ${props => props.$active && `
     box-shadow: ${props.theme.shadows.md};
-    transform: translateY(-1px);
   `}
 `;
 
 const HeaderActions = styled.div`
   display: flex;
-  gap: ${props => props.theme.spacing.sm};
+  gap: ${props => props.theme.spacing.xs};
   align-items: center;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    gap: ${props => props.theme.spacing.sm};
+  }
 `;
 
 const UserInfo = styled.div`
-  display: flex;
+  display: none;
   align-items: center;
   gap: ${props => props.theme.spacing.sm};
   padding: 6px 12px;
   background: ${props => props.theme.colors.background.tertiary};
   border: 1px solid ${props => props.theme.colors.border.default};
   border-radius: ${props => props.theme.borderRadius.md};
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    display: flex;
+  }
 `;
 
 const UserName = styled.span`
@@ -138,6 +201,14 @@ const ActionButton = styled.button`
   }
 `;
 
+const DesktopOnlyButton = styled(ActionButton)`
+  display: none;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    display: flex;
+  }
+`;
+
 interface TopBarProps {
   onSettingsClick?: () => void;
 }
@@ -148,8 +219,8 @@ const modules: { id: ModuleType; name: string; icon: string }[] = [
 
 const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
   const currentModule = useCurrentModule();
-  const { auth } = useStore();
-  const { setCurrentModule, openModal, logout } = useStoreActions();
+  const { auth, ui } = useStore();
+  const { setCurrentModule, openModal, logout, toggleMobileMenu } = useStoreActions();
 
   const handleModuleChange = (moduleId: ModuleType) => {
     setCurrentModule(moduleId);
@@ -168,17 +239,26 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
   };
 
   return (
-    <TopBarContainer isElectronMacOS={isElectronMacOS}>
-      <Logo>
-        <i className="fas fa-cube"></i>
-        <span>Open3DStudio</span>
-      </Logo>
+    <TopBarContainer $isElectronMacOS={isElectronMacOS}>
+      <LeftSection>
+        <HamburgerButton 
+          onClick={toggleMobileMenu}
+          title={ui.sidebar.mobileMenuOpen ? "Close menu" : "Open menu"}
+        >
+          <i className={ui.sidebar.mobileMenuOpen ? "fas fa-times" : "fas fa-bars"}></i>
+        </HamburgerButton>
+        
+        <Logo>
+          <i className="fas fa-cube"></i>
+          <span>Open3DStudio</span>
+        </Logo>
+      </LeftSection>
       
       <MainNav>
         {modules.map(module => (
           <NavItem
             key={module.id}
-            active={currentModule === module.id}
+            $active={currentModule === module.id}
             onClick={() => handleModuleChange(module.id)}
           >
             <i className={module.icon}></i>
@@ -195,12 +275,12 @@ const TopBar: React.FC<TopBarProps> = ({ onSettingsClick }) => {
           </UserInfo>
         )}
         
-        <ActionButton 
+        <DesktopOnlyButton 
           title="View on GitHub" 
           onClick={() => window.open('https://github.com/FishWoWater/Open3DStudio', '_blank')}
         >
           <i className="fab fa-github"></i>
-        </ActionButton>
+        </DesktopOnlyButton>
         
         {auth.authStatus?.user_auth_enabled && auth.isAuthenticated && (
           <ActionButton title="Logout" onClick={handleLogout}>

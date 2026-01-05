@@ -386,6 +386,7 @@ export interface SidebarState {
   leftCollapsed: boolean;
   rightCollapsed: boolean;
   width: number;
+  mobileMenuOpen: boolean;
 }
 
 export interface ViewportState {

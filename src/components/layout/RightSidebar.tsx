@@ -3,20 +3,32 @@ import styled from 'styled-components';
 import { useTasks, useStoreActions } from '../../store';
 import TaskList from '../tasks/TaskList';
 
-const SidebarContainer = styled.aside<{ isCollapsed: boolean }>`
-  width: ${props => props.isCollapsed ? '0' : '320px'};
-  background: ${props => props.theme.colors.background.secondary};
-  border-left: 1px solid ${props => props.theme.colors.border.default};
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-  transition: ${props => props.theme.transitions.normal};
+const SidebarContainer = styled.aside<{ $isCollapsed: boolean }>`
+  /* Mobile: hidden completely */
+  display: none;
+  
+  /* Tablet and up: show as sidebar */
+  @media (min-width: ${props => props.theme.breakpoints.lg}) {
+    display: ${props => props.$isCollapsed ? 'none' : 'flex'};
+    width: 280px;
+    min-width: 280px;
+    background: ${props => props.theme.colors.background.secondary};
+    border-left: 1px solid ${props => props.theme.colors.border.default};
+    flex-direction: column;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    transition: ${props => props.theme.transitions.normal};
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.xl}) {
+    width: 320px;
+    min-width: 320px;
+  }
 `;
 
 const SidebarHeader = styled.div`
-  padding: ${props => props.theme.spacing.lg} ${props => props.theme.spacing.lg};
+  padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.md};
   border-bottom: 1px solid ${props => props.theme.colors.border.default};
   background: linear-gradient(135deg, 
     ${props => props.theme.colors.background.secondary} 0%, 
@@ -27,18 +39,19 @@ const SidebarHeader = styled.div`
   justify-content: space-between;
 
   h3 {
-    font-size: ${props => props.theme.typography.fontSize.lg};
+    font-size: ${props => props.theme.typography.fontSize.base};
     font-weight: ${props => props.theme.typography.fontWeight.semibold};
     letter-spacing: -0.01em;
     color: ${props => props.theme.colors.text.primary};
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    margin: 0;
 
     &::before {
       content: '';
-      width: 4px;
-      height: 20px;
+      width: 3px;
+      height: 16px;
       background: linear-gradient(135deg, 
         ${props => props.theme.colors.primary[600]} 0%, 
         ${props => props.theme.colors.primary[500]} 100%
@@ -46,25 +59,40 @@ const SidebarHeader = styled.div`
       border-radius: 2px;
     }
   }
+
+  @media (min-width: ${props => props.theme.breakpoints.xl}) {
+    padding: ${props => props.theme.spacing.lg} ${props => props.theme.spacing.lg};
+    
+    h3 {
+      font-size: ${props => props.theme.typography.fontSize.lg};
+      gap: 10px;
+
+      &::before {
+        width: 4px;
+        height: 20px;
+      }
+    }
+  }
 `;
 
 const ButtonGroup = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 6px;
 `;
 
 const ClearButton = styled.button`
   background: transparent;
   border: 1px solid ${props => props.theme.colors.border.default};
   color: ${props => props.theme.colors.text.secondary};
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: ${props => props.theme.borderRadius.sm};
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: ${props => props.theme.transitions.fast};
+  font-size: 12px;
 
   &:hover {
     background: ${props => props.theme.colors.error}20;
@@ -75,6 +103,12 @@ const ClearButton = styled.button`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.xl}) {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
   }
 `;
 
@@ -117,11 +151,11 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ isCollapsed }) => {
   };
 
   if (isCollapsed) {
-    return <SidebarContainer isCollapsed={true} />;
+    return null;
   }
 
   return (
-    <SidebarContainer isCollapsed={false}>
+    <SidebarContainer $isCollapsed={false}>
       <SidebarHeader>
         <h3>Task History</h3>
         <ButtonGroup>

@@ -17,28 +17,62 @@ const ViewportContainer = styled.main`
   background: ${props => props.theme.colors.background.primary};
   position: relative;
   overflow: hidden;
+  min-height: 200px;
 `;
 
 const ViewportHeader = styled.div`
-  padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.lg};
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
   border-bottom: 1px solid ${props => props.theme.colors.border.default};
   background: ${props => props.theme.colors.background.secondary};
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
+  min-height: 40px;
+  gap: ${props => props.theme.spacing.xs};
+  flex-wrap: wrap;
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+    min-height: 48px;
+    gap: ${props => props.theme.spacing.sm};
+    flex-wrap: nowrap;
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.lg}) {
+    padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.lg};
+  }
 `;
 
 const ViewportInfo = styled.div`
-  display: flex;
+  display: none;
   align-items: center;
-  gap: ${props => props.theme.spacing.md};
-  font-size: ${props => props.theme.typography.fontSize.sm};
+  gap: ${props => props.theme.spacing.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
   color: ${props => props.theme.colors.text.secondary};
 
   .separator {
     color: ${props => props.theme.colors.text.muted};
-    margin: 0 ${props => props.theme.spacing.sm};
+    margin: 0 ${props => props.theme.spacing.xs};
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    display: flex;
+    font-size: ${props => props.theme.typography.fontSize.sm};
+    gap: ${props => props.theme.spacing.md};
+
+    .separator {
+      margin: 0 ${props => props.theme.spacing.sm};
+    }
+  }
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${props => props.theme.spacing.xs};
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    gap: ${props => props.theme.spacing.sm};
   }
 `;
 
@@ -51,20 +85,26 @@ const TestMainButton = styled.button`
   background: ${props => props.theme.colors.primary[600]};
   color: white;
   border: none;
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
   border-radius: ${props => props.theme.borderRadius.md};
-  font-size: ${props => props.theme.typography.fontSize.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: ${props => props.theme.spacing.xs};
+  white-space: nowrap;
   
   &:hover {
     background: ${props => props.theme.colors.primary[500]};
   }
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+    font-size: ${props => props.theme.typography.fontSize.sm};
+  }
 `;
 
-const TestDropdownMenu = styled.div<{ isOpen: boolean }>`
+const TestDropdownMenu = styled.div<{ $isOpen: boolean }>`
   position: absolute;
   top: 100%;
   right: 0;
@@ -74,7 +114,7 @@ const TestDropdownMenu = styled.div<{ isOpen: boolean }>`
   box-shadow: ${props => props.theme.shadows.lg};
   z-index: 1000;
   min-width: 150px;
-  display: ${props => props.isOpen ? 'block' : 'none'};
+  display: ${props => props.$isOpen ? 'block' : 'none'};
   margin-top: 4px;
 `;
 
@@ -105,14 +145,14 @@ const UploadButton = styled.button`
   background: ${props => props.theme.colors.primary[600]};
   color: white;
   border: none;
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
   border-radius: ${props => props.theme.borderRadius.md};
-  font-size: ${props => props.theme.typography.fontSize.sm};
+  font-size: ${props => props.theme.typography.fontSize.xs};
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: ${props => props.theme.spacing.xs};
-  margin-left: ${props => props.theme.spacing.sm};
+  white-space: nowrap;
   
   &:hover {
     background: ${props => props.theme.colors.primary[500]};
@@ -121,6 +161,20 @@ const UploadButton = styled.button`
   &:disabled {
     background: ${props => props.theme.colors.gray[400]};
     cursor: not-allowed;
+  }
+
+  /* Hide text on mobile, show only icon */
+  span {
+    display: none;
+  }
+
+  @media (min-width: ${props => props.theme.breakpoints.md}) {
+    padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+    font-size: ${props => props.theme.typography.fontSize.sm};
+
+    span {
+      display: inline;
+    }
   }
 `;
 
@@ -568,19 +622,17 @@ const Viewport: React.FC = () => {
     <ViewportContainer>
       <ViewportHeader>
         <ViewportInfo>
-          {/* <span>Scene: Untitled</span> */}
-          {/* <span className="separator">•</span> */}
           <span>Objects: {viewport.loadedModels.length}</span>
           <span className="separator">•</span>
           <span>Render: {viewport.renderMode}</span>
         </ViewportInfo>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <HeaderActions>
           <TestDropdown>
             <TestMainButton onClick={() => setTestDropdownOpen(!testDropdownOpen)}>
-              Example Assets
+              <span>Assets</span>
               <i className={`fas fa-chevron-${testDropdownOpen ? 'up' : 'down'}`}></i>
             </TestMainButton>
-            <TestDropdownMenu isOpen={testDropdownOpen} onClick={(e) => e.stopPropagation()}>
+            <TestDropdownMenu $isOpen={testDropdownOpen} onClick={(e) => e.stopPropagation()}>
               <TestDropdownItem onClick={(e) => { 
                 e.preventDefault(); 
                 e.stopPropagation(); 
@@ -610,7 +662,7 @@ const Viewport: React.FC = () => {
           
           <UploadButton onClick={triggerFileUpload} disabled={isUploading}>
             <i className="fas fa-upload"></i>
-            {isUploading ? 'Uploading...' : 'Upload Model'}
+            <span>{isUploading ? 'Uploading...' : 'Upload'}</span>
           </UploadButton>
           
           <ExportPanel />
@@ -621,7 +673,7 @@ const Viewport: React.FC = () => {
             accept=".glb,.gltf,.obj,.fbx,.ply"
             onChange={handleFileUpload}
           />
-        </div>
+        </HeaderActions>
       </ViewportHeader>
       
       <ViewportContent>
