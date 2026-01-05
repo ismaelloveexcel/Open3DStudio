@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
-import styled from 'styled-components';
+import React, { useEffect, useCallback } from 'react';
+import styled, { useTheme } from 'styled-components';
 import { useCurrentModule, useStoreActions, useUI } from '../../store';
+import { ModuleType } from '../../types/state';
 
 const MobileOverlay = styled.div<{ $isOpen: boolean }>`
   position: fixed;
@@ -213,13 +214,28 @@ const SidebarNav: React.FC = () => {
     };
   }, [mobileMenuOpen]);
 
-  const handleNavClick = (itemId: string) => {
-    setCurrentModule(itemId as any);
-    // Close mobile menu after selection on mobile
-    if (window.innerWidth < 1024) {
+  const theme = useTheme();
+  
+  // Parse the breakpoint value (e.g., "1024px" -> 1024)
+  const lgBreakpoint = parseInt(theme.breakpoints.lg, 10);
+
+  const handleNavClick = useCallback((itemId: string) => {
+    // Only set module if it's a valid ModuleType
+    const validModules: ModuleType[] = [
+      'game-studio', 'playable-generator', 'mesh-generation', 
+      'mesh-painting', 'mesh-segmentation', 'part-completion',
+      'auto-rigging', 'mesh-retopology', 'mesh-uv-unwrapping'
+    ];
+    
+    if (validModules.includes(itemId as ModuleType)) {
+      setCurrentModule(itemId as ModuleType);
+    }
+    
+    // Close mobile menu after selection on mobile/tablet
+    if (window.innerWidth < lgBreakpoint) {
       setMobileMenuOpen(false);
     }
-  };
+  }, [setCurrentModule, setMobileMenuOpen, lgBreakpoint]);
 
   return (
     <>
