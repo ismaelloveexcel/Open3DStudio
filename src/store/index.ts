@@ -60,7 +60,8 @@ const defaultUIState: UIState = {
   sidebar: {
     leftCollapsed: false,
     rightCollapsed: false,
-    width: 400
+    width: 400,
+    mobileMenuOpen: false
   },
   viewport: {
     renderMode: 'rendered',
@@ -205,6 +206,8 @@ interface StoreState extends AppState {
   // UI actions
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
+  toggleMobileMenu: () => void;
+  setMobileMenuOpen: (open: boolean) => void;
   setSidebarWidth: (width: number) => void;
   setRenderMode: (mode: RenderMode) => void;
   setCurrentTool: (tool: ViewportTool) => void;
@@ -671,6 +674,30 @@ export const useStore = create<StoreState>()(
           sidebar: {
             ...state.ui.sidebar,
             rightCollapsed: !state.ui.sidebar.rightCollapsed
+          }
+        }
+      }));
+    },
+
+    toggleMobileMenu: () => {
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          sidebar: {
+            ...state.ui.sidebar,
+            mobileMenuOpen: !state.ui.sidebar.mobileMenuOpen
+          }
+        }
+      }));
+    },
+
+    setMobileMenuOpen: (open: boolean) => {
+      set((state) => ({
+        ui: {
+          ...state.ui,
+          sidebar: {
+            ...state.ui.sidebar,
+            mobileMenuOpen: open
           }
         }
       }));
@@ -1738,6 +1765,8 @@ export const useStoreActions = () => {
     loadTasksFromHistory: store.loadTasksFromHistory,
     toggleLeftSidebar: store.toggleLeftSidebar,
     toggleRightSidebar: store.toggleRightSidebar,
+    toggleMobileMenu: store.toggleMobileMenu,
+    setMobileMenuOpen: store.setMobileMenuOpen,
     setRenderMode: store.setRenderMode,
     setCurrentTool: store.setCurrentTool,
     setTransformMode: store.setTransformMode,
